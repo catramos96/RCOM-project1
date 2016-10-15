@@ -29,4 +29,16 @@ int llopen_sender(int fd);
 
 int llopen_receiver(int fd);
 
+int llwrite(int fd, char * buffer, int length);
+
+int llread(int fd, char * buffer);
+
 char* build_frame_SU(int is); //tramas do tipo S ou UA
+
+char* build_frame_I(char* data, unsigned int data_length,char s);
+
+int receiveFrame(int fd);
+
+char* stuff(char *frame, int frame_length);
+
+char* desstuff(char *frame, int frame_length);

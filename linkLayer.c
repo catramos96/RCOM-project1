@@ -21,8 +21,10 @@ void atende()                   // atende alarme
     conta=0;
 }
 
-/**
- *
+/*
+ * @param porta 
+ * @param flag TRANSMITTER / RECEIVER
+ * @return identificador da ligação de dados ; valor negativo em caso de erro
  */
 int llopen(char* port, int isReceiver)
 {
@@ -63,7 +65,7 @@ int llopen(char* port, int isReceiver)
     if(isReceiver) llopen_receiver(fd);
     else llopen_sender(fd);
     
-    return 0;
+    return fd;
 
 }
 
@@ -109,16 +111,16 @@ int llopen_sender(int fd)
    
     //envia a trama
     if((res = write(fd,set, FRAME_SIZE)) == -1){
-	perror("write sender");
-	exit(-1);
+        perror("write sender");
+        exit(-1);
     }else printf("trama enviada!\n");
 
     free(set); // liberta a memoria
 
    //Verificar e receber a trama UA (sem alarme)
    if((res = receive_verify_SU(fd,1)) == -1){
-	perror("receive frame");
-	exit(-1);
+        perror("receive frame");
+        exit(-1);
    }
 
 /*    //alarme
@@ -164,3 +166,45 @@ int llopen_sender(int fd)
     close(fd);
     return 0;
 }
+
+
+/*
+ * Usado pelo TRANSMITTER
+ * @param fd identificador da ligação de dados
+ * @param buffer array de caracteres a transmitir 
+ * @param length  comprimento do array de caracteres 
+ * @return número de caracteres escritos ; valor negativo em caso de erro
+ */
+int llwrite(int fd, char * buffer, int length){
+    
+    //criacao da trama I
+    char *frame_i = build_frame_I(buffer,length,0); //ainda e para mudar este 0
+    
+    //byte stuffing
+    stuff(frame_i,strlen(frame_i));
+    
+    //envio da trama I (write)
+    
+    
+    //rececao da trama RR / REJ (read)
+}
+
+/*
+ * @param fd identificador da ligação de dados
+ * @param buffer array de caracteres recebidos 
+ * @return comprimento do array (número de caracteres lidos) ; valor negativo em caso de erro
+ */
+int llread(int fd, char * buffer){
+    
+    //rececao da trama I (read)
+    
+    //desstuffing
+    
+    //verificacao de erros
+    
+    //criacao da trama RR/REJ
+    
+    //envio da trama RR / REJ (write)
+    
+}
+

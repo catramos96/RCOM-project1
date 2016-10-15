@@ -6,6 +6,9 @@
 #define BUF_SIZE 255
 #define FRAME_SIZE 5
 #define FLAG (char)0x7E		//flag de inicio e fim de tramas
+#define ESCAPE (char)0x7D	//escape flag
+#define AUX (char)0x20  	//escape flag
 #define FRAME_C_UA (char)0x05 	//Campo de controlo para trama UA
 #define FRAME_C_SET (char)0x03 	//Campo de controlo para a trama SET
 #define FRAME_A (char)0x03	//campo de endereco para tramas tipo U e S
+#define FRAME_C_I (char)0x40    //Campo de controlo para a trama I quando s=1
