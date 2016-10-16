@@ -12,3 +12,4 @@
 #define FRAME_C_SET (char)0x03 	//Campo de controlo para a trama SET
 #define FRAME_A (char)0x03	//campo de endereco para tramas tipo U e S
 #define FRAME_C_I (char)0x40    //Campo de controlo para a trama I quando s=1
+#define FRAME_C_DISC (char)0x0B	//campo de controlo para trama DISC

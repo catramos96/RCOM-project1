@@ -9,8 +9,10 @@ char* build_frame_SU(int isUA){
  
     frame[0] = FLAG;    
     frame[1] = FRAME_A;
-    if(isUA) 
+    if(isUA==1) 
 	frame[2] = FRAME_C_UA;
+	else if (isUA==2)
+	frame[2] == FRAME_C_DISC;
     else
 	frame[2] = FRAME_C_SET;
     frame[3] = (frame[1] ^ frame[2]);
