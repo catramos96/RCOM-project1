@@ -99,10 +99,12 @@ int receive_verify_SU(int fd, int isUA){
 		 }
 		 break;
 	   case 2:
-               if(isUA && tmp == FRAME_C_UA)
+               if((isUA==1) && tmp == FRAME_C_UA)
                    break;
+			   else if((isUA==2) && tmp == FRAME_C_DISC)
+				   break;
                else if(!isUA && tmp == FRAME_C_SET)
-		   break;
+					break;
                else if(tmp==FLAG){
                    correct=0;
 		   n=1;

@@ -208,3 +208,47 @@ int llread(int fd, char * buffer){
     
 }
 
+int llclose_sender(int fd)
+{
+	int res, tries = 0, disconnected = 0;
+	char* ua = build_frame_SU(1);
+	char* disc = build_frame_SU(2);
+	
+	while(!disconnected)
+	{
+		
+			if (tries > 3)
+			{
+				//PARAR ALARME!!!!
+				printf("Numero maximo de tentativas.\n");
+				return 1;
+			}
+				tries++;
+				
+				if((res = write(fd,disc, FRAME_SIZE)) == -1){
+					perror("write sender");
+					exit(-1);
+				}else printf("trama enviada!\n");
+
+				if (tries == 1)
+				{
+					//COMECAR ALARME
+				}
+		
+				if((res = receive_verify_SU(fd,2)) == -1){	
+					perror("receive frame");
+					exit(-1);
+   
+   
+				if((res = write(fd,ua, FRAME_SIZE)) == -1){
+					perror("write sender");
+					exit(-1);
+				}else 
+				{
+					printf("trama enviada!\n");
+					//PARAR ALARME!!!!
+					disconnected = 1;
+				}
+	  }
+	return 0;
+}
