@@ -10,35 +10,28 @@ o trabalho está divido em camadas:
 
 # O que está feito  #
 
-* llopen quase acabado
+* llopen 
+
+* llwrite e llread (faltam uns testes)
+
+* byte stuffing
 
 # TODO list #
 
-* llopen : 
-* * maquina de estados (o que esta feito nao e muito bonito)
-* * alarme
+* descobrir o erro do bbc2
 
-* llwrite
+* acabar llclose
 
-* llread
+* colocar o stuffing para tudo
 
-* llclose
+* ler o ppt para ver se não falta mais nada do linkLayer
 
 * application Layer
 
-* byte stuffing (stuffing e desstuffing)
+### importante mas não prioritario ###
+* testar mais exaustivamente (ver mesmo o conteudo das tramas de um lado para o outro
+
+* testar as cenas do n e r (embora isto esteja mais relacionada com o applicationLayer, convém ter a certeza que funciona)
+
 
 # Duvidas : #
-
-* o que são as cenas do professor que escreveu no quadro? (na aula passada e esta)
-
-* UA e SET precisam de stuffing?
-
-* sequenceNumber na strut linkLayer
-
-* newtio.c_cc[VTIME] (alarme, como funciona? )
-
-
-
-
-
