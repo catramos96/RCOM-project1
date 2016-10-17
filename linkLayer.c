@@ -174,17 +174,104 @@ int llopen_sender(int fd)
  * @return número de caracteres escritos ; valor negativo em caso de erro
  */
 int llwrite(int fd, char * buffer, int length){
-    
-    //criacao da trama I
-    char *frame_i = build_frame_I(buffer,length,0); //ainda e para mudar este 0
-    
+    (void) signal(SIGALRM, handler);  // instala  rotina que atende interrupcao
+    int tries = 0;
+	int n_written = 0;
+	int done = 0;
+
+    //criacao da trama I(NS=0)
+    char *frame_i0 = build_frame_I(buffer,length,0);
     //byte stuffing
-    stuff(frame_i,strlen(frame_i));
+    stuff(frame_i0,strlen(frame_i0));
     
-    //envio da trama I (write)
-    
-    
+    //envio da trama I(0) (write)
     //rececao da trama RR / REJ (read)
+    while(!done)
+    {
+        
+        if(tries == 0 || alarmOff) //só envia a trama se : for a primeira tentativa ou o alarme for desativado
+        {
+            if(tries >= data_link.numTransmissions)
+            {
+                printf("Numero de tentativas excedida!\n");
+                exit(-1);
+            }
+            if((res = write(fd,framw_i0, FRAME_SIZE)) == -1)		//Envio da Trama I0
+            {
+                perror("write sender");
+                exit(-1);
+            }else
+            {
+                //ativa o alarme
+                alarm(1);  
+                alarmOff = 0;
+                tries++;
+                printf("trama enviada!\n");
+            }
+
+        }
+        
+        //Verificar e receber a trama RR com Nr = 1
+        /*if((res = receive(fd,"RR")) == -1)					//RR AINDA NÃO ESTÁ IMPLEMENTADO!!
+        {
+            return -1;
+        }
+        else{
+        	done = 1;
+        	free(frame_i0);
+        }*/
+              
+    }
+
+    //reset values
+    done = 0;
+    tries = 0;
+    alarmOff = 1;
+
+    //criacao da trama I(NS=1)
+    char *frame_i1 = build_frame_I(buffer,length,1);
+    //byte stuffing
+    stuff(frame_i1,strlen(frame_i1));
+
+    //envio da trama I(1) (write)
+    //rececao da trama RR / REJ (read)
+    while(!done)
+    {
+        
+        if(tries == 0 || alarmOff) //só envia a trama se : for a primeira tentativa ou o alarme for desativado
+        {
+            if(tries >= data_link.numTransmissions)
+            {
+                printf("Numero de tentativas excedida!\n");
+                exit(-1);
+            }
+            if((res = write(fd,framw_i1, FRAME_SIZE)) == -1)		//Envio da Trama I0
+            {
+                perror("write sender");
+                exit(-1);
+            }else
+            {
+                //ativa o alarme
+                alarm(1);  
+                alarmOff = 0;
+                tries++;
+                printf("trama enviada!\n");
+            }
+
+        }
+        
+        //Verificar e receber a trama RR com Nr = 0
+        /*if((res = receive(fd,"RR")) == -1)					//RR ainda não está IMPLEMENTADO
+        {
+            return 1;
+        }
+        else{
+        	done = 1;
+        	free(frame_i1);
+        }*/
+              
+    }
+    return n_written;
 }
 
 /*
