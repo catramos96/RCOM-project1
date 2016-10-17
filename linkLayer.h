@@ -19,6 +19,10 @@ typedef struct{
     char frame[BUF_SIZE];	/*Trama*/
 }dataLink;
 
+typedef enum {
+	START, FLAG_RCV, A_RCV, C_RCV, BCC_OK, STOP
+} State;
+
 static dataLink data_link;
 
 void init_linkLayer(char *port);
@@ -33,11 +37,13 @@ int llwrite(int fd, char * buffer, int length);
 
 int llread(int fd, char * buffer);
 
-char* build_frame_SU(int is); //tramas do tipo S ou UA
+char* build_frame_SU(char *flag); //tramas do tipo S ou UA
 
 char* build_frame_I(char* data, unsigned int data_length,char s);
 
-int receiveFrame(int fd);
+int receive(int fd, char* flag);
+
+char getControlField(char* flag);
 
 char* stuff(char *frame, int frame_length);
 

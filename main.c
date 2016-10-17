@@ -22,7 +22,7 @@ int main(int argc, char** argv)
     int isReceiver = 1;
     if(strcmp("TRANSMITTER", argv[2])==0) isReceiver=0;
 
-    //llopen(argv[1],isReceiver);
+    llopen(argv[1],isReceiver);
  
     /*
      * Teste BYTE stuffing

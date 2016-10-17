@@ -1,6 +1,6 @@
 #include "linkLayerAux.c"
 
-int flag=1, conta=1;
+int alarmOff = 1;
 
 /**
  * Inicializacao do layerLink
@@ -10,16 +10,20 @@ void init_linkLayer(char* port){
     strcpy(data_link.port, port);
     data_link.baudRate = BAUDRATE;
     data_link.sequenceNumber = 0;
-    data_link.timeout = 3;
+    data_link.timeout = 1;
     data_link.numTransmissions = 3;
 }
 
-void atende()                   // atende alarme
-{
-   //printf("alarme # %d\n", conta);
-    flag=1;
-    conta=0;
+void handler(){
+    alarmOff = 1;
 }
+
+/*
+void initAlarm(){
+    (void) signal(SIGALRM, handler);  // instala  rotina que atende interrupcao
+    alarm(1);  
+    alarmOff = 0;
+}*/
 
 /*
  * @param porta 
@@ -71,19 +75,19 @@ int llopen(char* port, int isReceiver)
 
 int llopen_receiver(int fd)
 {
-   struct termios oldtio,newtio;
+  struct termios oldtio,newtio;
    int res;
    printf("RECEIVER\n");
+   
 
    //Verificar e receber a trama SET 
-   if((res = receive_verify_SU(fd,0)) == -1){
+   if((res = receive(fd,"SET")) == -1){
 	perror("receive frame");
 	exit(-1);
    }
 
    //criacao da trama UA
-   int isUA = 1;
-   char *ua = build_frame_SU(isUA);
+   char *ua = build_frame_SU("UA");
 
    //envio da trama UA
    if((res = write(fd,ua,FRAME_SIZE)) == -1){
@@ -101,62 +105,56 @@ int llopen_receiver(int fd)
 
 int llopen_sender(int fd)
 {
+    (void) signal(SIGALRM, handler);  // instala  rotina que atende interrupcao
     struct termios oldtio,newtio;
     int res;
+    int done = 0;
     printf("SENDER\n");
 
     //criacao da trama SET
-    int isUA = 0;
-    char *set = build_frame_SU(isUA);
-   
-    //envia a trama
-    if((res = write(fd,set, FRAME_SIZE)) == -1){
-        perror("write sender");
-        exit(-1);
-    }else printf("trama enviada!\n");
-
-    free(set); // liberta a memoria
-
-   //Verificar e receber a trama UA (sem alarme)
-   if((res = receive_verify_SU(fd,1)) == -1){
-        perror("receive frame");
-        exit(-1);
-   }
-
-/*    //alarme
-    char tmp;	
-    (void) signal(SIGALRM, atende);  // instala  rotina que atende interrupcao
-
-    while(conta){
-       if(flag){
-          alarm(3);                 // activa alarme de 3s
-          flag=0;
-       }if((read(fd,&tmp,1)) > 0){
-	  printf("alarme desativado\n");
-	  flag = 0;
-	  conta--;
-      }
-    }
+    char *set = build_frame_SU("SET");
     
-    //rececao da trama UA ---->>>> ISTO E PARA MUDAR
-    char ua[FRAME_SIZE];
-    int n = 0;
-    while (STOP==FALSE) {   
-      if((read(fd,&tmp,1)) == -1){
-	perror("read sender");
-	exit(-1);
-       }
+    int tries = 0;
+    while(!done)
+    {
+        
+        if(tries == 0 || alarmOff) //só envia a trama se : for a primeira tentativa ou o alarme for desativado
+        {
+            if(tries >= data_link.numTransmissions)
+            {
+                printf("Numero de tentativas excedida!\n");
+                exit(-1);
+            }
+            
+            //envia a trama
+            if((res = write(fd,set, FRAME_SIZE)) == -1)
+            {
+                perror("write sender");
+                exit(-1);
+            }else
+            {
+                //ativa o alarme
+                alarm(1);  
+                alarmOff = 0;
+                tries++;
+                printf("trama enviada!\n");
+            }
 
-      if ((n != 0) && tmp == FLAG) STOP=TRUE;
-	
-      ua[n] = tmp;
-      n++;
-
-      printf("UA[%d] = %x\n",n,tmp);
+        }
+        
+        //Verificar e receber a trama UA ---> isto é para mudar (Eu devo receber a trama e no processamento verifica-la)
+        if((res = receive(fd,"UA")) == -1)
+        {
+            return 1;
+        }
+        else
+        {
+            done = 1;
+            free(set); // liberta a memoria
+            printf("Comunicacao estabelecida!\n");
+        }
+        
     }
-    printf("Trama recebida!\n");
-
-*/
 
     //terminacao
     if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
@@ -210,45 +208,94 @@ int llread(int fd, char * buffer){
 
 int llclose_sender(int fd)
 {
-	int res, tries = 0, disconnected = 0;
-	char* ua = build_frame_SU(1);
-	char* disc = build_frame_SU(2);
-	
-	while(!disconnected)
-	{
-		
-			if (tries > 3)
-			{
-				//PARAR ALARME!!!!
-				printf("Numero maximo de tentativas.\n");
-				return 1;
-			}
-				tries++;
-				
-				if((res = write(fd,disc, FRAME_SIZE)) == -1){
-					perror("write sender");
-					exit(-1);
-				}else printf("trama enviada!\n");
+    (void) signal(SIGALRM, handler);  // instala  rotina que atende interrupcao
+    int res, tries = 0, done = 0;
+    char* ua = build_frame_SU("UA");
+    char* disc = build_frame_SU("DISC");
 
-				if (tries == 1)
-				{
-					//COMECAR ALARME
-				}
+    while(!done)
+    {
+        
+        if(tries == 0 || alarmOff) //só envia a trama se : for a primeira tentativa ou o alarme for desativado
+        {
+            if(tries >= data_link.numTransmissions)
+            {
+                printf("Numero de tentativas excedida!\n");
+                exit(-1);
+            }
+            
+            //envia a trama
+            if((res = write(fd,disc, FRAME_SIZE)) == -1){
+                perror("write sender");
+                exit(-1);
+            }else
+            {
+                //ativa o alarme
+                alarm(1);  
+                alarmOff = 0;
+                tries++;
+                printf("trama disc enviada!\n");
+            }
+
+        }
+        
+        //Verificar e receber a trama NAO SEI
+        if((res = receive(fd,"DISC")) == -1)
+        {
+            return 1;
+        }
+        else
+        {
+            done = 1;
+            free(disc); // liberta a memoria
+            printf("Comunicacao estabelecida!\n");
+            
+            //ENVIA UMA TRAMA DO TIPO UA
+            if((res = write(fd,ua, FRAME_SIZE)) == -1){
+                perror("write sender");
+                exit(-1);
+            }else{
+                printf("trama ua enviada!\n");
+            }
+        }
+        
+    }
+    
+  /*  
+    while(!disconnected)
+    {
+        if (tries > 3)
+        {
+            //PARAR ALARME!!!!
+            printf("Numero maximo de tentativas.\n");
+            return 1;
+        }
+        tries++;
+				
+        if((res = write(fd,disc, FRAME_SIZE)) == -1){
+            perror("write sender");
+            exit(-1);
+        }else printf("trama enviada!\n");
+
+        if (tries == 1)
+        {
+            //COMECAR ALARME
+        }
 		
-				if((res = receive_verify_SU(fd,2)) == -1){	
-					perror("receive frame");
-					exit(-1);
-   
-   
-				if((res = write(fd,ua, FRAME_SIZE)) == -1){
-					perror("write sender");
-					exit(-1);
-				}else 
-				{
-					printf("trama enviada!\n");
-					//PARAR ALARME!!!!
-					disconnected = 1;
-				}
+        if((res = receive_verify_SU(fd,2)) == -1){	
+            perror("receive frame");
+            exit(-1);
+        
+            if((res = write(fd,ua, FRAME_SIZE)) == -1){
+                perror("write sender");
+                exit(-1);
+            }else 
+            {
+                printf("trama enviada!\n");
+                //PARAR ALARME!!!!
+                disconnected = 1;
+            }
 	  }
-	return 0;
+	  */
+    return 0;
 }
