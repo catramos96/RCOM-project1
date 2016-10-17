@@ -26,7 +26,6 @@ char* build_frame_SU(char *flag)
     return frame;
 }
 
-
 /*
  * @briefFunction that creates a frame I
  * @param data to transport
@@ -34,22 +33,18 @@ char* build_frame_SU(char *flag)
  * @param s NS of Frame I
  * @FrameI : |F|A|C|BCC1|DATA|BCC2|F|
  */
-char* build_frame_I(char* data, unsigned int data_length,char s){
+char* build_frame_I(char* data, unsigned int data_length){
 
     char *frame = NULL;
-    int total = FRAME_SIZE + data_length+1 ; //frame size, with data length and an extra byte for BCC2
-    frame = (char *) malloc(total);
+    data_link.frame_size = FRAME_SIZE + data_length+1 ; //frame size, with data length and an extra byte for BCC2
+    frame = (char *) malloc(data_link.frame_size);
     
-    printf("BUILD : frame size (suposto) %d\n",total);
+    //printf("BUILD : frame size (suposto) %d\n",data_link.frame_size);
  
     frame[0] = FLAG;    
     frame[1] = FRAME_A;
-    if(s) 
-	   frame[2] = FRAME_C_I; //NS = 1
-    else
-	   frame[2] = s; //Ns
-    
-    frame[3] = (frame[1] ^ frame[2]);   //BCC1
+    frame[2] = (FRAME_C_I << 6) & data_link.sequenceNumber; //s=0
+    frame[3] = (frame[1] ^ frame[2]);
     
     //data
     int i = 0;
@@ -60,7 +55,7 @@ char* build_frame_I(char* data, unsigned int data_length,char s){
     
     frame[5+data_length] = FLAG;
     
-    printf("BUILD : frame size (real) %d\n",strlen(frame));
+    //printf("BUILD : frame size (real) %d\n",strlen(frame));
     
     return frame;
 }
@@ -68,9 +63,9 @@ char* build_frame_I(char* data, unsigned int data_length,char s){
 int receive(int fd, char* flag){
 
    char* frame = NULL;
-   frame = (char *) malloc(FRAME_SIZE);     //comecamos por reservar espaço para uma frame do tipo S ou U, se for do tipo I fazemos realloc
+   frame = (char *) malloc(data_link.frame_size);     //comecamos por reservar espaço para uma frame do tipo S ou U, se for do tipo I fazemos realloc
    
-   State state = START;   //State Machine
+   State state = START;
    int size = 0;
    int done = 0;
    int hasData = 1; //flag que indica se é uma trama do tipo I
@@ -84,7 +79,7 @@ int receive(int fd, char* flag){
        if (state != STOP) {
            if((read(fd,&c,1)) == -1){
                perror("read receiver");
-               exit(-1);
+               return -1;
            }
        }
        
@@ -111,7 +106,7 @@ int receive(int fd, char* flag){
                }
                break;
            case A_RCV:
-		          tmp = getControlField(flag);      //DEFINI PARA O TRAMA I 
+		tmp = getControlField(flag);
                if(c == tmp)
                {
                    frame[size] = c;
@@ -162,7 +157,6 @@ int receive(int fd, char* flag){
                }
                else //trama do tipo I
                {
-                    //realoc para a nova data !!
                    frame[size] = c;
                    size++;
                }
@@ -176,15 +170,33 @@ int receive(int fd, char* flag){
        
    }
    
+   frame = desstuff(frame,data_link.frame_size);
+   
    if(hasData)
    {
-       //é preciso fazer desstuff da frame
+       int data_length = data_link.frame_size - FRAME_SIZE - 1; //-1 por causa da proteção dupla
        
-       //fazer verificacao do BCC2 
+       int i, bcc2;
+       for(i = 0; i < data_length; i++){
+           bcc2 ^= frame[4+i];
+       }
+       
+       if(bcc2 != frame[4+data_length]){
+           printf("erro no bcc2!\n");
+           return -1;
+       }
+        
+        //nao sei se faltam coisas aqui... tipo colocar a mensagem em algum lado, ou assim.
        
    }
+   
+   //se recebemos uma trama do tipo RR significa que o N(s) a proxima trama do tipo I vai depender deste N(r), por isso podemos ja tratar do assunto
+   //PS: nao sei se isto esta correto estar aqui, mas funciona
+   if(strcmp(flag,"RR") == 0)
+   {
+       data_link.sequenceNumber = (tmp >> 7) & 0;
+   }
  
-   printf("Trama recebida!\n");
    return 0;
     
 }
@@ -200,8 +212,15 @@ char getControlField(char* flag)
     if(strcmp("DISC",flag) == 0){
         return FRAME_C_DISC;
     }
-    if(strcmp("I",flag) == 0){                          ///----------------------------meti isto aqui
-        return FRAME_C_I;
+    if(strcmp("RR",flag) == 0){
+        // o nr é sempre o oposto do que recebe
+        int nr = 1;
+        if(data_link.sequenceNumber == 0) nr = 0;
+        
+        return (FRAME_C_RR << 7) & nr;
+    }
+    if(strcmp("I",flag) == 0){
+        return (FRAME_C_I << 6) & data_link.sequenceNumber; //o controlo depende do sequenceNumber
     }
         
     printf("ainda nao esta definida");
@@ -226,6 +245,8 @@ char* stuff(char *frame, int frame_length){
         }
         newframe_length++;
     }
+    
+    data_link.frame_size = newframe_length;
     
     //reservar espaço na memoria
     char* newframe = (char *) malloc(newframe_length);
@@ -267,6 +288,8 @@ char* desstuff(char *frame, int frame_length){
             newframe_length--;
         }
     }
+    
+    data_link.frame_size = newframe_length;
     
      //reservar espaço na memoria
     char* newframe = (char *) malloc(newframe_length);

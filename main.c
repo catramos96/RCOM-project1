@@ -22,8 +22,15 @@ int main(int argc, char** argv)
     int isReceiver = 1;
     if(strcmp("TRANSMITTER", argv[2])==0) isReceiver=0;
 
-    llopen(argv[1],isReceiver);
+    int fd = llopen(argv[1],isReceiver);
+    
+    
+    printf("-----------------------------------------------\n");
  
+    char *data = "abcd";
+    if(isReceiver) llread(fd,NULL);
+    else llwrite(fd,data,4);
+    
     /*
      * Teste BYTE stuffing
      */

@@ -10,13 +10,15 @@
 
 #include "constants.h"
 
-typedef struct{	
+typedef struct
+{	
     char port[20]; 	/*Dispositivo /dev/ttySx, x = 0, 1*/
     int baudRate; 	/*Velocidade de transmissão*/
     unsigned int sequenceNumber;	/*Número de sequência da trama: 0, 1*/
     unsigned int timeout;  	/*Valor do temporizador: 1 s*/
     unsigned int numTransmissions; 	/*Número de tentativas em caso de falha*/
     char frame[BUF_SIZE];	/*Trama*/
+    unsigned int frame_size;
 }dataLink;
 
 typedef enum {
@@ -39,7 +41,7 @@ int llread(int fd, char * buffer);
 
 char* build_frame_SU(char *flag); //tramas do tipo S ou UA
 
-char* build_frame_I(char* data, unsigned int data_length,char s);
+char* build_frame_I(char* data, unsigned int data_length);
 
 int receive(int fd, char* flag);
 

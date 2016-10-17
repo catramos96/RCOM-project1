@@ -9,21 +9,15 @@ void init_linkLayer(char* port){
 
     strcpy(data_link.port, port);
     data_link.baudRate = BAUDRATE;
-    data_link.sequenceNumber = 0;
+    data_link.sequenceNumber = 0; //N(S) = 0
     data_link.timeout = 1;
     data_link.numTransmissions = 3;
+    data_link.frame_size = FRAME_SIZE;  //numero minimo de Bytes
 }
 
 void handler(){
     alarmOff = 1;
 }
-
-/*
-void initAlarm(){
-    (void) signal(SIGALRM, handler);  // instala  rotina que atende interrupcao
-    alarm(1);  
-    alarmOff = 0;
-}*/
 
 /*
  * @param porta 
@@ -84,7 +78,8 @@ int llopen_receiver(int fd)
    if((res = receive(fd,"SET")) == -1){
 	perror("receive frame");
 	exit(-1);
-   }
+   }else
+       printf("Trama SET recebida!\n");
 
    //criacao da trama UA
    char *ua = build_frame_SU("UA");
@@ -94,11 +89,12 @@ int llopen_receiver(int fd)
 	perror("write sender");
 	exit(-1);
    }else 
-	printf("trama enviada! \n");
+	printf("trama UA enviada! \n");
 	
+   //isto deve ser no close
    //finalizacao
-   tcsetattr(fd,TCSANOW,&oldtio);
-   close(fd);
+   //tcsetattr(fd,TCSANOW,&oldtio);
+   //close(fd);
    
    return 0;
 }
@@ -123,22 +119,20 @@ int llopen_sender(int fd)
             if(tries >= data_link.numTransmissions)
             {
                 printf("Numero de tentativas excedida!\n");
-                exit(-1);
+                return -1;
             }
             
             //envia a trama
             if((res = write(fd,set, FRAME_SIZE)) == -1)
             {
-                perror("write sender");
-                exit(-1);
-            }else
-            {
-                //ativa o alarme
-                alarm(1);  
-                alarmOff = 0;
-                tries++;
-                printf("trama enviada!\n");
+                printf("erro na escrita write()");
             }
+            
+            //ativa o alarme
+            alarm(1);  
+            alarmOff = 0;
+            tries++;
+            printf("trama SET enviada!\n");
 
         }
         
@@ -151,17 +145,19 @@ int llopen_sender(int fd)
         {
             done = 1;
             free(set); // liberta a memoria
+            printf("trama UA recebida!\n");
             printf("Comunicacao estabelecida!\n");
         }
         
     }
 
+    //isto deve ser no llclose
     //terminacao
-    if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
-      perror("tcsetattr");
-      exit(-1);
-    }
-    close(fd);
+    //if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
+    //  perror("tcsetattr");
+    //  exit(-1);
+    //}
+    //close(fd);
     return 0;
 }
 
@@ -174,59 +170,57 @@ int llopen_sender(int fd)
  * @return número de caracteres escritos ; valor negativo em caso de erro
  */
 int llwrite(int fd, char * buffer, int length){
+       
     (void) signal(SIGALRM, handler);  // instala  rotina que atende interrupcao
     int tries = 0;
-	int n_written = 0;
-	int done = 0;
+    int n_written = 0;
+    int done = 0;
+    int res;
 
-    //criacao da trama I(NS=0)
-    char *frame_i0 = build_frame_I(buffer,length,0);
-    //byte stuffing
-    stuff(frame_i0,strlen(frame_i0));
-    
+    //criacao da trama I
+    char *frame_i = build_frame_I(buffer,length);   
+    stuff(frame_i,data_link.frame_size);
+
     //envio da trama I(0) (write)
     //rececao da trama RR / REJ (read)
     while(!done)
     {
-        
         if(tries == 0 || alarmOff) //só envia a trama se : for a primeira tentativa ou o alarme for desativado
         {
             if(tries >= data_link.numTransmissions)
             {
                 printf("Numero de tentativas excedida!\n");
-                exit(-1);
+                return -1;
             }
-            if((n_written = write(fd,frame_i0, FRAME_SIZE)) == -1)		//Envio da Trama I0
+            if((n_written = write(fd,frame_i,data_link.frame_size)) == -1)    //Envio da Trama I0
             {
-                perror("write sender");
-                exit(-1);
-            }else
-            {
-                //ativa o alarme
-                alarm(1);  
-                alarmOff = 0;
-                tries++;
-                printf("trama enviada!\n");
+                printf("erro de escrita em write()");
             }
-
+            //ativa o alarme
+            alarm(1);  
+            alarmOff = 0;
+            tries++;
+            printf("Trama I enviada!\n");
         }
         
-        //Verificar e receber a trama RR com Nr = 1
-        /*if((res = receive(fd,"RR")) == -1)					//RR AINDA NÃO ESTÁ IMPLEMENTADO!!
+        //Verificar e receber a trama RR OU REJ com Nr = 1      (por agora vamos só pensar que recebe o RR
+        if((res = receive(fd,"RR")) == -1)					//RR AINDA NÃO ESTÁ IMPLEMENTADO!!
         {
             return -1;
         }
         else{
-        	done = 1;
-        	free(frame_i0);
-        }*/
+            done = 1;
+            free(frame_i);
+            printf("Trama RR recebida!\n");
+        }
               
-    }
+   }
 
+   /*
     //reset values
-    done = 0;
-    tries = 0;
-    alarmOff = 1;
+  done = 0;
+   tries = 0;
+   alarmOff = 1;
 
     //criacao da trama I(NS=1)
     char *frame_i1 = build_frame_I(buffer,length,1);
@@ -234,7 +228,8 @@ int llwrite(int fd, char * buffer, int length){
     stuff(frame_i1,strlen(frame_i1));
 
     //envio da trama I(1) (write)
-    //rececao da trama RR / REJ (read)
+
+     //rececao da trama RR / REJ (read)
     while(!done)
     {
         
@@ -245,7 +240,7 @@ int llwrite(int fd, char * buffer, int length){
                 printf("Numero de tentativas excedida!\n");
                 exit(-1);
             }
-            if((n_written= write(fd,frame_i1, FRAME_SIZE)) == -1)		//Envio da Trama I0
+            if((res = write(fd,framw_i1, FRAME_SIZE)) == -1)		//Envio da Trama I0
             {
                 perror("write sender");
                 exit(-1);
@@ -255,24 +250,25 @@ int llwrite(int fd, char * buffer, int length){
                 alarm(1);  
                 alarmOff = 0;
                 tries++;
-                printf("trama enviada!\n");
+            printf("trama enviada!\n");
             }
 
-        }
+       }
         
         //Verificar e receber a trama RR com Nr = 0
         /*if((res = receive(fd,"RR")) == -1)					//RR ainda não está IMPLEMENTADO
         {
             return 1;
-        }
+       }
         else{
         	done = 1;
-        	free(frame_i1);
-        }*/
-              
-    }
+
+       	free(frame_i1);
+       }             
+
+    }*/
     return n_written;
-}
+ }
 
 /*
  * @param fd identificador da ligação de dados
@@ -281,16 +277,35 @@ int llwrite(int fd, char * buffer, int length){
  */
 int llread(int fd, char * buffer){
     
-    //rececao da trama I (read)
+    //ainda não percebi muito bem o contexto deste buffer ---> será para colocar aqui a mensagem recebida?
+
+    int res;
     
-    //desstuffing
+    //rececao da trama I (read) com verificacao de erros e desstuffing
+    if((res = receive(fd,"I")) == -1)
+    {
+        return -1;
+    }
+    else{
+        printf("Trama I recebida!\n");
+    }
+        
+        
+    //criacao da trama RR/REJ (ainda só vamos criar a RR)
+    char *rr = build_frame_SU("RR");   
     
-    //verificacao de erros
+    //stuff(frame_i,data_link.frame_size); //por agora sem stuffing ?
+    data_link.frame_size = FRAME_SIZE;  //quando tiver o stuffing podemos tirar isto
+
+    //envia a trama RR
+    if((res = write(fd,rr,data_link.frame_size)) == -1)    //Envio da Trama I0
+    {
+        perror("write llread");
+        exit(-1);
+    }else
+        printf("Trama RR enviada!\n");
     
-    //criacao da trama RR/REJ
-    
-    //envio da trama RR / REJ (write)
-    
+    return 0;
 }
 
 int llclose_sender(int fd)
@@ -308,22 +323,18 @@ int llclose_sender(int fd)
             if(tries >= data_link.numTransmissions)
             {
                 printf("Numero de tentativas excedida!\n");
-                exit(-1);
+                return -1;
             }
             
             //envia a trama
             if((res = write(fd,disc, FRAME_SIZE)) == -1){
-                perror("write sender");
-                exit(-1);
-            }else
-            {
-                //ativa o alarme
-                alarm(1);  
-                alarmOff = 0;
-                tries++;
-                printf("trama disc enviada!\n");
+                printf("Erro na escrita write()");
             }
-
+            //ativa o alarme
+            alarm(1);  
+            alarmOff = 0;
+            tries++;
+            printf("trama disc enviada!\n");
         }
         
         //Verificar e receber a trama NAO SEI
