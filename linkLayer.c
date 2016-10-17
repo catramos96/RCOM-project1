@@ -196,7 +196,7 @@ int llwrite(int fd, char * buffer, int length){
                 printf("Numero de tentativas excedida!\n");
                 exit(-1);
             }
-            if((res = write(fd,framw_i0, FRAME_SIZE)) == -1)		//Envio da Trama I0
+            if((n_written = write(fd,frame_i0, FRAME_SIZE)) == -1)		//Envio da Trama I0
             {
                 perror("write sender");
                 exit(-1);
@@ -245,7 +245,7 @@ int llwrite(int fd, char * buffer, int length){
                 printf("Numero de tentativas excedida!\n");
                 exit(-1);
             }
-            if((res = write(fd,framw_i1, FRAME_SIZE)) == -1)		//Envio da Trama I0
+            if((n_written= write(fd,frame_i1, FRAME_SIZE)) == -1)		//Envio da Trama I0
             {
                 perror("write sender");
                 exit(-1);
