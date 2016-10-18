@@ -13,17 +13,21 @@
 
 /*PODE SER ALTERADO*/
 struct applicationLayer {
-int fileDescriptor; /*Descritor correspondente à porta série*/
-int status; /*TRANSMITTER | RECEIVER*/
+	int fileDescriptor; /*Descritor correspondente à porta série*/
+	int status; 		/*TRANSMITTER | RECEIVER*/
 };
 
-int llopen(int porta, TRANSMITTER | RECEIVER);
+typedef struct {
+	char * content;		//conteudo do package
+	unsigned int size;	//num de bytes do package
+}applicationPackage;
 
-int llwrite(int fd, char * buffer, int length);
+static unsigned int sequenceNumber;
 
-int llread(int fd, char * buffer);
+applicationPackage CreateStartPackage(char * filename, char * filesize, char * date, char * permissions);
 
-int llclose(int fd);
+applicationPackage CreateDataPackage(char * data, unsigned int size);
 
+applicationPackage CreateEndPackage();
 
 
