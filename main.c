@@ -31,6 +31,11 @@ int main(int argc, char** argv)
     if(isReceiver) llread(fd,NULL);
     else llwrite(fd,data,4);
     
+    printf("-----------------------------------------------\n");
+    
+    llclose(fd,isReceiver);
+    
+    
     /*
      * Teste BYTE stuffing
      */
