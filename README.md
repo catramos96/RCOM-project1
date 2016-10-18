@@ -10,28 +10,29 @@ o trabalho está divido em camadas:
 
 # O que está feito  #
 
-* llopen 
-
-* llwrite e llread (faltam uns testes)
+* llopen, llwrite, llread e llclose(faltam uns testes)
 
 * byte stuffing
 
+* stop-n-wait
+
 # TODO list #
+
+**Link Layer** (responsável -> Inês)
 
 * descobrir o erro do bbc2
 
-* acabar llclose
-
 * colocar o stuffing para tudo
 
-* ler o ppt para ver se não falta mais nada do linkLayer
+* ler o ppt para ver se não falta nenhum pormenor
 
-* application Layer
-
-### importante mas não prioritario ###
 * testar mais exaustivamente (ver mesmo o conteudo das tramas de um lado para o outro
 
 * testar as cenas do n e r (embora isto esteja mais relacionada com o applicationLayer, convém ter a certeza que funciona)
+
+**application Layer**
+
+* tudo
 
 
 # Duvidas : #
