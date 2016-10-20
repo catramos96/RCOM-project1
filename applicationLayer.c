@@ -1,4 +1,8 @@
 #include "applicationLayer.h"
+/* IMPORTANTE ======================================================================================
+Ver se o tamanho das STRINGS incluiem o +1 (para \0)
+====================================================================================================*/
+
 
 /*argumentos
 – filename: nome de ficheiro
@@ -7,32 +11,31 @@
 - permissions: permissoes do ficheiro
 retorno
 – pacote de controlo inicial com as informacoes do ficheiro  */
-applicationPackage createStartPackage(char * filename, char * filesize, char * date, char * permissions)
+int sendControlPackage(char control,int fd,char * file_name, char * file_size, char * file_date, char * file_perm)
 {
-	char content[255]; //C + T1 + L1 + V1*4 + T2 + L2 + V2*(strlen) + T3 + L3 + V3*4 + T4 + L4 + V4*2 = 19 + strlen => max = 274 
-	content[0] = 2; 							//C  - 2 (START)
-	content[1] = 0;								//T1 - 0 (tamanho)
-	content[2] = 4;								//L1 - tamanho de V1
-	memcpy(content + 3, filesize, 4);			//V1 - tamanho do ficheiro
-	
-	int L2 = strlen(filename);
-	content[7] = 1;								//T2 - 1 (nome)
-	content[8] = L2;							//L2 - tamanho de V2
-	memcpy(content + 9, filename, L2);			//V2 - nome do ficheiro
-	
-	content[9 + L2] = 2;						//T3 - 2 (data)
-	content[10 + L2] = 4;						//L3 - tamanho de V3
-	memcpy(content + 11 + L2, date, 4);			//V3 - data do ficheiro
-	
-	content[15 + L2] = 3;						//T4 - 3 (permissoes)
-	content[16 + L2] = 2;						//L4 - tamanho de V3
-	memcpy(content + 17 + L2, permissions, 2);	//V4 - permissoes do ficheiro
-	
-	applicationPackage package;
-	package.content = content;
-	package.size = 19 + L2;
-	
-	return package;
+  char *pkg = (char*)malloc(MAX_PKG_SIZE*sizeof(char)+1);
+
+    sprintf(pkg,"%c%c%c%s%c%c%s%c%c%s%c%c%s",control,
+      FILE_SIZE,(char)strlen(file_size),file_size,
+      FILE_NAME,(char)strlen(file_name),file_name,
+      FILE_DATE,(char)strlen(file_date),file_date,
+      FILE_PERM,(char)strlen(file_perm),file_perm);
+
+  int written = 0;
+  int STOP = 0;
+
+   /* while(!STOP){
+      if((written += llwrite(fd,pkg,strlen(pkg))) == -1){
+        perror("Could not send START PACKAGE");
+        exit(-1);
+      }
+      if(written == strlen(pkg))
+        STOP = 1;
+    }
+*/
+  free(pkg);
+
+	return 0;
 }
 
 /*argumentos
@@ -40,39 +43,41 @@ applicationPackage createStartPackage(char * filename, char * filesize, char * d
 - size: tamanho do pacote de dados
 retorno
 – pacote de dados do ficheiro a enviar */
-applicationPackage createDataPackage(char * data, unsigned int size)
+int sendDataPackage(int fd, char * data, int sequenceN,unsigned int size)
 {
-	char content[255];
-	content[0] = 1;							//C
-	content[1] = sequenceNumber++;			//N
-	memcpy(content + 2, (char*)&size, 2);	//L2 L1
-	memcpy(content + 4, data, size);
-	
-	applicationPackage package;
-	package.content = content;
-	package.size = size;
-	
-	return package;
-}
+	char *pkg = (char*)malloc(MAX_PKG_SIZE*sizeof(char)+1);
 
-/*retorno
-– pacote de controlo para sinalizar fim do envio do ficheiro */
-applicationPackage createEndPackage()
-{
-	char content[1] = { 3 };   // 3 (END)
-	applicationPackage package;
-	package.content = content;
-	package.size = 1;
+  
+  sprintf(pkg,"%c%c%c%c%s",PKG_DATA,
+                          (char)sequenceN,
+                          (char)size-(size/DATA_SIZE),
+                          (char)size-(size/DATA_SIZE),
+                          data);
 	
-	return package;
+
+  int written = 0;
+  int STOP = 0;
+  
+   /* while(!STOP){
+      if((written += llwrite(fd,pkg,strlen(pkg))) == -1){
+        perror("Could not send DATA PACKAGE");
+        exit(-1);
+      }
+      if(written == strlen(pkg))
+        STOP = 1;
+    }
+*/
+  
+  free(pkg);
+	return 0;
 }
 
 int sender(char* port, char* filepath){
 
 	//inicializa o dataLink
-    init_linkLayer(port);
+    //init_linkLayer(port);
 
-    int fd = llopen(port,0);		//0 - is not the receiver
+    int fd = 0;// = llopen(port,0);		//0 - is not the receiver
 
     int file;
 
@@ -81,6 +86,7 @@ int sender(char* port, char* filepath){
     	exit(-1);
     }
 
+    //get status struct from the file
    	struct stat st;
    	if(stat(filepath,&st) == -1){
    		perror("Could not acess file status");
@@ -96,48 +102,74 @@ int sender(char* port, char* filepath){
    	}
    	
    	//information about the file
+   	
    	char *file_name = filepath+pos+1;
-   	char file_data[16];
-   		sprintf(file_data,"%ld",st.st_mtime);
-   	char file_size[16];
-   		sprintf(file_size,"%ld",st.st_size);
-   	char file_premissions[16];
-   		sprintf(file_premissions,"%d",st.st_mode);
+   	char file_size[16], file_date[16], file_perm[16];
 
+   	sprintf(file_size,"%lu",st.st_size);
+   	sprintf(file_date,"%lu",st.st_mtime);
+   	sprintf(file_perm,"%u",st.st_mode);
 
-   	//creates and sends package START
-   	applicationPackage apk_start = createStartPackage(file_name,file_size,file_data,file_premissions);
-   	if(llwrite(fd,apk_start,strlen(apk_start)) == -1){
-   		perror("Could not send START PACKAGE");
-   		exit(-1)
-   	}
+   if(sendControlPackage(PKG_START,fd,file_name,file_size,file_date,file_perm) == -1){
+      perror("Could not send Start Package");
+      exit(-1);
+    }
 
-   	/*
-	While(!end of file)
-	{
-		if(read() < 245)
-			end of file = 1
-		llwrite pck dados
-	}
-	llwrite pkg end
-	llclose
+   
+   	int STOP = 0, r = 0;
+    sequenceNumber = 0;
 
-   	*/
+    while(!STOP){
+
+      char *data = (char*) malloc(sizeof(char)*DATA_SIZE + 1);
+      memset(data,'\0',sizeof(char)*DATA_SIZE + 1);             //clear alocated memmory
+
+      if((r = read(file,data,DATA_SIZE)) == -1){
+    		perror("Could not read file");
+    		exit(-1);
+    	}
+    	else if(r < DATA_SIZE){
+    		STOP = 1;
+      }
+
+      sendDataPackage(fd,data,sequenceNumber,r);
+
+      free(data);      
+  	 	sequenceNumber++;
+    }
 
    	//creates and sends package END
-   	applicationPackage apk_end = createEndPackage();
-   	if(llwrite(fd,apk_start,strlen(apk_end)) == -1){
+   	//applicationPackage apk_end = createEndPackage();
+   	/*if(llwrite(PKG_END,fd,apk_start,strlen(apk_end)) == -1){
    		perror("Could not send END PACKAGE");
-   		exit(-1)
-   	}
+   		exit(-1);
+   	}*/
 
-    close(fd);
+   /* close(fd);
+    close(file);
+    free(data);*/
 
 	return 0;
 }
 
 int reciever(char* port){
 
+	//inicializa o dataLink
+    /*init_linkLayer(port);
+    int fd = llopen(port,1);		//1 - is the receiver*/
+
+    //espera com llread o package START string[0] = 2 
+    //analiza a informação e cria o ficheiro com os parametros indicados (permissões/data/nome)
+    //abre ficheiro com TRUNCATE e WRITE only
+    //espera por outro packate
+    //	se string[1] -> data
+    //		armazena informação no fim do ficheiro
+    //	se string[0] -> end
+    //lclode
+    //close file
+    // free alocated memory
+
+
+
 	return 0;
 }
-

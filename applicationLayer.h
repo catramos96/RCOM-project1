@@ -10,7 +10,6 @@
 #include "constants.h"
 #include "linkLayer.h"
 
-
 /*PODE SER ALTERADO*/
 struct applicationLayer {
 	int fileDescriptor; /*Descritor correspondente à porta série*/
@@ -22,12 +21,14 @@ typedef struct {
 	unsigned int size;	//num de bytes do package
 }applicationPackage;
 
-static unsigned int sequenceNumber;
+static unsigned int sequenceNumber = 0;
 
-applicationPackage CreateStartPackage(char * filename, char * filesize, char * date, char * permissions);
+int sender(char* port, char* filepath);
 
-applicationPackage CreateDataPackage(char * data, unsigned int size);
+int reciever(char* port);
 
-applicationPackage CreateEndPackage();
+int sendControlPackage(char control, int fd,char * filename, char * filesize, char * date, char * permissions);
+
+int sendDataPackage(int fd,char *data, int sequenceN, unsigned int size);
 
 
