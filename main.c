@@ -1,4 +1,4 @@
-//#include "linkLayer.c"
+#include "linkLayer.c"
 #include "applicationLayer.h"
 
 /**
@@ -9,20 +9,13 @@
  */
 int main(int argc, char** argv)
 {
-
     //testar application layer
     if(argc != 2)
     {
       exit(1);
     }
-    receiver(argv[1]);
+    //receiver(argv[1]);
     //sender(0,argv[1]);
-
-return 0;
-}
-
-    //sender(0,argv[1]);
-
 
     /*if ( (argc < 3) || 
 		((strcmp("/dev/ttyS0", argv[1])!=0) && (strcmp("/dev/ttyS1", argv[1])!=0)) ||
@@ -84,6 +77,6 @@ return 0;
     for(i = 0; i < 10; i++){
         printf("info_desstuffed[%d] = 0x%x\n",i,info_desstuffed[i]);
     }
-    
+    */
     return 0;
-}*/
+}

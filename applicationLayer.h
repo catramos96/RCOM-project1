@@ -7,10 +7,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
-#include "constants.h"
-#include "linkLayer.h"
-
-
 
 /*PODE SER ALTERADO*/
 struct applicationLayer {
