@@ -1,5 +1,5 @@
-#include "linkLayer.c"
-#include "applicationLayer.h"
+//#include "linkLayer.c"
+#include "applicationLayer.c"
 
 /**
  * Recebe as informações iniciais.
@@ -14,7 +14,7 @@ int main(int argc, char** argv)
     {
       exit(1);
     }
-    //receiver(argv[1]);
+    receiver(argv[1]);
     //sender(0,argv[1]);
 
     /*if ( (argc < 3) || 
