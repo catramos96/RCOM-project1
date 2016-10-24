@@ -1,4 +1,7 @@
 #include "applicationLayer.h"
+
+
+
 /* IMPORTANTE ======================================================================================
 Ver se o tamanho das STRINGS incluiem o +1 (para \0)
 ====================================================================================================*/
@@ -24,7 +27,7 @@ int sendControlPackage(char control,int fd,char * file_name, char * file_size, c
   int written = 0;
   int STOP = 0;
 
-   /* while(!STOP){
+    while(!STOP){
       if((written += llwrite(fd,pkg,strlen(pkg))) == -1){
         perror("Could not send START PACKAGE");
         exit(-1);
@@ -32,7 +35,7 @@ int sendControlPackage(char control,int fd,char * file_name, char * file_size, c
       if(written == strlen(pkg))
         STOP = 1;
     }
-*/
+
   free(pkg);
 
 	return 0;
@@ -57,8 +60,8 @@ int sendDataPackage(int fd, char * data, int sequenceN,unsigned int size)
 
   int written = 0;
   int STOP = 0;
-  
-   /* while(!STOP){
+
+    while(!STOP){
       if((written += llwrite(fd,pkg,strlen(pkg))) == -1){
         perror("Could not send DATA PACKAGE");
         exit(-1);
@@ -66,10 +69,70 @@ int sendDataPackage(int fd, char * data, int sequenceN,unsigned int size)
       if(written == strlen(pkg))
         STOP = 1;
     }
-*/
   
   free(pkg);
 	return 0;
+}
+
+int analizePackage(char* data, struct package pkg){
+
+int i = 0, n_bytes;
+
+if(data[0] == PKG_START || data[0] == PKG_END){
+  pkg.type = data[0];
+
+  for(i = 1; i < strlen(data);i++){
+
+    switch(data[i]){
+
+      case FILE_SIZE:{
+        n_bytes = atoi(data[i+1]);   //number of bytes for the size
+        char size[n_bytes];
+        memcpy(size,data[i] + 2,n_bytes);
+        pkg.size = atoi(size);     //converte para int
+        i+= n_bytes+1;
+        break;
+      }
+      case FILE_NAME:{
+        n_bytes = atoi(data[i+1]);   //number of bytes for the size
+        memcpy(pkg.name,data[i] + 2,n_bytes);
+        i+= n_bytes+1;
+        break;
+      }
+      case FILE_DATE:{
+        n_bytes = atoi(data[i+1]);   //number of bytes for the size
+        char size[n_bytes];
+        memcpy(size,data[i] + 2,n_bytes);
+        pkg.date = atoi(size);     //converte para int
+        i+= n_bytes+1;
+        break;
+      }
+      case FILE_PERM:{
+        n_bytes = atoi(data[i+1]);   //number of bytes for the size
+        char size[n_bytes];
+        memcpy(size,data[i] + 2,n_bytes);
+        pkg.perm = atoi(size);     //converte para int
+        i+= n_bytes+1;
+        break;
+      }
+    }
+  }
+
+}
+else if(data[0] == PKG_DATA){
+
+  pkg.type = data[0];
+  pkg.number = data[1];
+  pkg.size = atoi(data[2])*DATA_SIZE+atoi(data[3]);
+  memcpy(pkg.data,data + 4,strlen(data) - 4);
+
+}
+else{
+  perror("Package of unknown type");
+  exit(-1);
+}
+
+printf("%c%d\n",pkg.type,pkg.size);
 }
 
 int sender(char* port, char* filepath){
@@ -77,7 +140,7 @@ int sender(char* port, char* filepath){
 	//inicializa o dataLink
     //init_linkLayer(port);
 
-    int fd = 0;// = llopen(port,0);		//0 - is not the receiver
+    int fd = 0;//llopen(port,0);		//0 - is not the receiver    DESCOMENTAR
 
     int file;
 
@@ -139,24 +202,67 @@ int sender(char* port, char* filepath){
     }
 
    	//creates and sends package END
-   	//applicationPackage apk_end = createEndPackage();
-   	/*if(llwrite(PKG_END,fd,apk_start,strlen(apk_end)) == -1){
-   		perror("Could not send END PACKAGE");
-   		exit(-1);
-   	}*/
+   	if(sendControlPackage(PKG_END,fd,file_name,file_size,file_date,file_perm) == -1){
+      perror("Could not send End Package");
+      exit(-1);
+    }
 
-   /* close(fd);
+    if(llclose(fd,0) == -1){
+        perror("Could not close port on sender");
+        exit(-1);
+    }
     close(file);
-    free(data);*/
 
 	return 0;
 }
 
-int reciever(char* port){
+//int receiver(char* port){
+int receiver(char* msg){
+
+struct package pkg;
+analizePackage(msg,pkg);
+return 0;
+}
 
 	//inicializa o dataLink
-    /*init_linkLayer(port);
-    int fd = llopen(port,1);		//1 - is the receiver*/
+  //init_linkLayer(port);
+  /*int fd = 0; //llopen(port,1);		//1 - is the receiver       DESCOMENTAR!!!
+
+  char *data = malloc(MAX_PKG_SIZE*sizeof(char));
+
+  if(llread(fd,data) == -1){
+    perror("Could not process START package");
+    exit(-1);
+  }
+
+  if(data[0] != PKG_START){
+    perror("First package recieved was not a START package");
+    exit(-1);
+  }
+
+  //cria o ficheiro com as permissões de acesso
+
+  char type = PKG_DATA;
+
+    //Recieve DATA
+    while(type == PKG_DATA){
+
+      if(llread(fd,data) == -1){
+        perror("Could not process START package");
+        exit(-1);
+      }
+
+      type = data[0];
+
+      //processar informação
+      //escrever no ficheiro
+
+    }
+
+    if(type != PKG_END){
+        perror("Last package recieved was not an END package");
+        exit(-1);
+    }
 
     //espera com llread o package START string[0] = 2 
     //analiza a informação e cria o ficheiro com os parametros indicados (permissões/data/nome)
@@ -169,7 +275,10 @@ int reciever(char* port){
     //close file
     // free alocated memory
 
-
+    if(llclose(fd,1) == -1){
+        perror("Could not close port on sender");
+        exit(-1);
+    }
 
 	return 0;
-}
+}*/

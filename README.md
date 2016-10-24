@@ -32,13 +32,7 @@ o trabalho está divido em camadas:
 
 **application Layer**
 
-* reciever
-
-* fazer testes de erros
-
-* verificar tamanho máximo dos pacotes e do campo dos dados
-
-* verificar se os tamanhos das string têm +1 para o \0
+* tudo
 
 
 # Duvidas : #

@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
-
 #include "constants.h"
 
 typedef struct
@@ -50,3 +49,9 @@ char getControlField(char* flag);
 char* stuff(char *frame, int frame_length);
 
 char* desstuff(char *frame, int frame_length);
+
+int llclose(int fd, int isReceiver);
+
+int llclose_receiver(int fd);
+
+int llclose_sender(int fd);

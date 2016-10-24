@@ -10,25 +10,40 @@
 #include "constants.h"
 #include "linkLayer.h"
 
+
+
 /*PODE SER ALTERADO*/
 struct applicationLayer {
 	int fileDescriptor; /*Descritor correspondente à porta série*/
 	int status; 		/*TRANSMITTER | RECEIVER*/
 };
 
-typedef struct {
-	char * content;		//conteudo do package
-	unsigned int size;	//num de bytes do package
-}applicationPackage;
+struct package{
+	char type;
+	//data information
+	int number;
+	int size;
+	char data[DATA_SIZE];
+	//control information
+	char name[32];
+	int date;
+	int perm;
+};
 
 static unsigned int sequenceNumber = 0;
-
-int sender(char* port, char* filepath);
-
-int reciever(char* port);
 
 int sendControlPackage(char control, int fd,char * filename, char * filesize, char * date, char * permissions);
 
 int sendDataPackage(int fd,char *data, int sequenceN, unsigned int size);
+
+int analizePackage(char* data, struct package pkg);
+
+int sender(char* port, char* filepath);
+
+//int receiver(char* port);
+
+int receiver(char* msg);
+
+
 
 

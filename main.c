@@ -1,5 +1,5 @@
 //#include "linkLayer.c"
-#include "applicationLayer.c"
+#include "applicationLayer.h"
 
 /**
  * Recebe as informações iniciais.
@@ -15,8 +15,13 @@ int main(int argc, char** argv)
     {
       exit(1);
     }
+    receiver(argv[1]);
+    //sender(0,argv[1]);
 
-    sender(0,argv[1]);
+return 0;
+}
+
+    //sender(0,argv[1]);
 
 
     /*if ( (argc < 3) || 
@@ -79,6 +84,6 @@ int main(int argc, char** argv)
     for(i = 0; i < 10; i++){
         printf("info_desstuffed[%d] = 0x%x\n",i,info_desstuffed[i]);
     }
-    */
+    
     return 0;
-}
+}*/
