@@ -7,6 +7,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
+#include <utime.h>
+#include "constants.h"
+#include "linkLayer.c"
 
 /*PODE SER ALTERADO*/
 struct applicationLayer {
@@ -32,13 +35,11 @@ int sendControlPackage(char control, int fd,char * filename, char * filesize, ch
 
 int sendDataPackage(int fd,char *data, int sequenceN, unsigned int size);
 
-int analizePackage(char* data, struct package pkg);
+int analizePackage(char* data, struct package * pkg);
 
 int sender(char* port, char* filepath);
 
-//int receiver(char* port);
-
-int receiver(char* msg);
+int receiver(char* port,char* filepath);
 
 
 
