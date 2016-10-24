@@ -2,33 +2,33 @@
 
     int alarmOff = 1;
 
-    /**
-    * Inicializacao do layerLink
-    */
-    void init_linkLayer(char* port){
+/**
+* Inicializacao do layerLink
+*/
+void init_linkLayer(char* port){
 
         strcpy(data_link.port, port);
         data_link.baudRate = BAUDRATE;
         data_link.sequenceNumber = 0; //N(S) = 0
         data_link.timeout = 1;
         data_link.numTransmissions = 3;
-        data_link.frame_size = FRAME_SIZE;  //numero minimo de Bytes
-    }
+        data_link.frame_size = FRAME_SIZE;  //numero de Bytes da trama que esta a ser enviada
+}
 
-    void handler(){
+void handler(){
         alarmOff = 1;
-    }
+}
 
-    /*
-    * @param porta 
-    * @param flag TRANSMITTER / RECEIVER
-    * @return identificador da ligação de dados ; valor negativo em caso de erro
-    */
-    int llopen(char* port, int isReceiver)
-    {
+/*
+* @param porta 
+* @param flag TRANSMITTER / RECEIVER
+* @return identificador da ligação de dados ; valor negativo em caso de erro
+*/
+int llopen(char* port, int isReceiver)
+{
         int fd,c,res;
         struct termios newtio, oldtio;
-        char buf[BUF_SIZE];
+        //char buf[BUF_SIZE];
     
         //abre a porta para leitura e escrita
         fd = open(port, O_RDWR | O_NOCTTY );
@@ -65,42 +65,45 @@
         
         return fd;
 
-    }
+}
 
-    int llopen_receiver(int fd)
-    {
+int llopen_receiver(int fd)
+{
     struct termios oldtio,newtio;
     int res;
     printf("RECEIVER\n");
     
-
     //Verificar e receber a trama SET 
     if((res = receive(fd,"SET")) == -1){
-            perror("receive frame");
-            exit(-1);
+        perror("receive frame");
+        exit(-1);
     }else
         printf("Trama SET recebida!\n");
 
     //criacao da trama UA
     char *ua = build_frame_SU("UA");
+    
+    printf("llopen_receiver UA antes do stuffing\n");
+    display(ua, FRAME_SIZE);
+    
+    char *ua_stuffed = stuff(ua, FRAME_SIZE);
+    
+    printf("llopen_receiver UA depois do stuffing\n");
+    display(ua_stuffed, FRAME_SIZE);
 
     //envio da trama UA
-    if((res = write(fd,ua,FRAME_SIZE)) == -1){
-            perror("write sender");
-            exit(-1);
-    }else 
-            printf("trama UA enviada! \n");
-            
-    //isto deve ser no close
-    //finalizacao
-    //tcsetattr(fd,TCSANOW,&oldtio);
-    //close(fd);
+    if((res = write(fd,ua_stuffed,FRAME_SIZE)) == -1){
+        perror("write sender");
+        exit(-1);
+    }else{
+        printf("trama UA enviada! \n");
+    }
     
     return 0;
-    }
+}
 
-    int llopen_sender(int fd)
-    {
+int llopen_sender(int fd)
+{
         (void) signal(SIGALRM, handler);  // instala  rotina que atende interrupcao
         struct termios oldtio,newtio;
         int res;
@@ -109,6 +112,14 @@
 
         //criacao da trama SET
         char *set = build_frame_SU("SET");
+        
+        printf("llopen_sender SET antes do sfuffing\n");
+        display(set, FRAME_SIZE);
+        
+        char *set_stuffed = stuff(set, FRAME_SIZE);
+        
+        printf("llopen_sender SET depois do sfuffing\n");
+        display(set_stuffed, FRAME_SIZE);   //temporario
         
         int tries = 0;
         while(!done)
@@ -123,7 +134,7 @@
                 }
                 
                 //envia a trama
-                if((res = write(fd,set, FRAME_SIZE)) == -1)
+                if((res = write(fd,set_stuffed, FRAME_SIZE)) == -1)
                 {
                     printf("erro na escrita write()");
                 }
@@ -144,32 +155,25 @@
             else
             {
                 done = 1;
-                free(set); // liberta a memoria
+                //free(set); // liberta a memoria
                 printf("trama UA recebida!\n");
                 printf("Comunicacao estabelecida!\n");
             }
             
         }
 
-        //isto deve ser no llclose
-        //terminacao
-        //if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
-        //  perror("tcsetattr");
-        //  exit(-1);
-        //}
-        //close(fd);
         return 0;
-    }
+}
 
 
-    /*
-    * Usado pelo TRANSMITTER
-    * @param fd identificador da ligação de dados
-    * @param buffer array de caracteres a transmitir 
-    * @param length  comprimento do array de caracteres 
-    * @return número de caracteres escritos ; valor negativo em caso de erro
-    */
-    int llwrite(int fd, char * buffer, int length){
+/*
+* Usado pelo TRANSMITTER
+* @param fd identificador da ligação de dados
+* @param buffer array de caracteres a transmitir 
+* @param length  comprimento do array de caracteres 
+* @return número de caracteres escritos ; valor negativo em caso de erro
+*/
+int llwrite(int fd, char * buffer, int length){
         
         (void) signal(SIGALRM, handler);  // instala  rotina que atende interrupcao
         int tries = 0;
@@ -179,7 +183,14 @@
 
         //criacao da trama I
         char *frame_i = build_frame_I(buffer,length);   
-        stuff(frame_i,data_link.frame_size);
+        
+        printf("llwrite I antes do sfuffing\n");
+        display(frame_i, length+FRAME_SIZE+1); 
+        
+        char* frame_stuffed = stuff(frame_i,10); //temporario
+        
+        printf("llwrite I depois do sfuffing\n");
+        display(frame_stuffed, 10); //temporario
 
         //envio da trama I(0) (write)
         //rececao da trama RR / REJ (read)
@@ -192,7 +203,7 @@
                     printf("Numero de tentativas excedida!\n");
                     return -1;
                 }
-                if((n_written = write(fd,frame_i,data_link.frame_size)) == -1)    //Envio da Trama I0
+                if((n_written = write(fd,frame_stuffed,10)) == -1)    //Envio da Trama I0 -- temporario
                 {
                     printf("erro de escrita em write()");
                 }
@@ -210,65 +221,14 @@
             }
             else{
                 done = 1;
-                free(frame_i);
+                //free(frame_i);
                 printf("Trama RR recebida!\n");
             }
                 
     }
 
-    /*
-        //reset values
-    done = 0;
-    tries = 0;
-    alarmOff = 1;
-
-        //criacao da trama I(NS=1)
-        char *frame_i1 = build_frame_I(buffer,length,1);
-        //byte stuffing
-        stuff(frame_i1,strlen(frame_i1));
-
-        //envio da trama I(1) (write)
-
-        //rececao da trama RR / REJ (read)
-        while(!done)
-        {
-            
-            if(tries == 0 || alarmOff) //só envia a trama se : for a primeira tentativa ou o alarme for desativado
-            {
-                if(tries >= data_link.numTransmissions)
-                {
-                    printf("Numero de tentativas excedida!\n");
-                    exit(-1);
-                }
-                if((res = write(fd,framw_i1, FRAME_SIZE)) == -1)		//Envio da Trama I0
-                {
-                    perror("write sender");
-                    exit(-1);
-                }else
-                {
-                    //ativa o alarme
-                    alarm(1);  
-                    alarmOff = 0;
-                    tries++;
-                printf("trama enviada!\n");
-                }
-
-        }
-            
-            //Verificar e receber a trama RR com Nr = 0
-            /*if((res = receive(fd,"RR")) == -1)					//RR ainda não está IMPLEMENTADO
-            {
-                return 1;
-        }
-            else{
-                    done = 1;
-
-            free(frame_i1);
-        }             
-
-        }*/
-        return n_written;
-    }
+    return n_written;
+}
 
     /*
     * @param fd identificador da ligação de dados
@@ -290,26 +250,31 @@ int llread(int fd, char * buffer){
             printf("Trama I recebida!\n");
         }
             
-            
         //criacao da trama RR/REJ (ainda só vamos criar a RR)
         char *rr = build_frame_SU("RR");   
         
-        //stuff(frame_i,data_link.frame_size); //por agora sem stuffing ?
-        data_link.frame_size = FRAME_SIZE;  //quando tiver o stuffing podemos tirar isto
-
+        printf("llread RR antes do sfuffing\n");
+        display(rr,FRAME_SIZE);
+        
+        char *rr_stuffed = stuff(rr,FRAME_SIZE);
+      
+        printf("llread RR depois do sfuffing\n");
+        display(rr_stuffed,FRAME_SIZE); //temporario
+        
         //envia a trama RR
-        if((res = write(fd,rr,data_link.frame_size)) == -1)    //Envio da Trama I0
+        if((res = write(fd,rr_stuffed,FRAME_SIZE)) == -1)    //Envio da Trama I0 -- temporario
         {
             perror("write llread");
             exit(-1);
-        }else
+        }
+        else
             printf("Trama RR enviada!\n");
         
         return 0;
     }
 
-    int llclose(int fd, int isReceiver)
-    {
+int llclose(int fd, int isReceiver)
+{
         struct termios newtio, oldtio;
         int ret=0;
         switch(isReceiver)
@@ -331,17 +296,25 @@ int llread(int fd, char * buffer){
         }
 
         close(fd);
-        return ret;		//retorna 0 se correr sem problemas
-    }
+        return ret;//retorna 0 se correr sem problemas
+}
 
 
 
-    int llclose_sender(int fd)
-    {
+int llclose_sender(int fd)
+{
         (void) signal(SIGALRM, handler);  // instala  rotina que atende interrupcao
         int res, tries = 0, done = 0;
-        char* ua = build_frame_SU("UA");
+        
         char* disc = build_frame_SU("DISC");
+        
+        printf("llclose_sender DISC antes do sfuffing\n");
+        display(disc, FRAME_SIZE);
+        
+        char *disc_stuffed = stuff(disc, FRAME_SIZE);
+        
+        printf("llclose_sender DISC depois do sfuffing\n");
+        display(disc_stuffed, FRAME_SIZE);
             
         while(!done)
         {
@@ -355,7 +328,7 @@ int llread(int fd, char * buffer){
                 }
                 
                 //envia a trama
-                if((res = write(fd,disc, FRAME_SIZE)) == -1){
+                if((res = write(fd,disc_stuffed, FRAME_SIZE)) == -1){
                     printf("Erro na escrita write()");
                 }
                 //ativa o alarme
@@ -373,13 +346,23 @@ int llread(int fd, char * buffer){
             else
             {
                 done = 1;
-                free(disc); // liberta a memoria
+                //free(disc); // liberta a memoria
                 printf("Trama DISC recebida!\n");
             }
         }
         
+        char* ua = build_frame_SU("UA");
+        
+        printf("llclose_sender UA antes do sfuffing\n");
+        display(ua, FRAME_SIZE);
+        
+        char *ua_stuffed = stuff(ua, FRAME_SIZE);
+        
+        printf("llclose_sender UA depois do sfuffing\n");
+        display(ua_stuffed, FRAME_SIZE);
+        
         //ENVIA UMA TRAMA DO TIPO UA
-        if((res = write(fd,ua, FRAME_SIZE)) == -1){
+        if((res = write(fd,ua_stuffed, FRAME_SIZE)) == -1){
             printf("Erro na escrita write()");
             return -1;
         }
@@ -387,15 +370,25 @@ int llread(int fd, char * buffer){
             printf("trama UA enviada!\n");
             return 0;
         }
-    }
+}
         
 
-    int llclose_receiver(int fd)
-    {
+int llclose_receiver(int fd)
+{
         (void) signal(SIGALRM, handler);  // instala  rotina que atende interrupcao
         int res, tries = 0, done = 0;
-        char* ua = build_frame_SU("UA");
+        
+        //char* ua = build_frame_SU("UA");
+        
         char* disc = build_frame_SU("DISC");
+        
+        printf("llclose_receiver DISC antes do sfuffing\n");
+        display(disc, FRAME_SIZE);
+        
+        char* disc_stuffed = stuff(disc,FRAME_SIZE);
+        
+        printf("llclose_receiver DISC depois do sfuffing\n");
+        display(disc_stuffed, FRAME_SIZE);
 
         while(!done)
         {
@@ -421,7 +414,7 @@ int llread(int fd, char * buffer){
                                     
             if(tries == 1 || alarmOff) //só envia a trama se : for a primeira tentativa ou o alarme for desativado
             {
-                if((res = write(fd,disc,FRAME_SIZE)) == -1)
+                if((res = write(fd,disc_stuffed,FRAME_SIZE)) == -1)
                 {
                     printf("Erro na escrita write()");
                     return -1;
@@ -433,7 +426,7 @@ int llread(int fd, char * buffer){
                                     
                                     
                 if((res = receive(fd,"UA")) != -1){
-                    free(disc);
+                    //free(disc);
                     done =1;
                     printf("trama UA recebida\n");
                 }

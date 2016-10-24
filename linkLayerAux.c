@@ -4,22 +4,12 @@
 
 char* build_frame_SU(char *flag)      
 {
-
     char *frame = NULL;
     frame = (char *) malloc(FRAME_SIZE);
  
     frame[0] = FLAG;    
     frame[1] = FRAME_A;
-    
     frame[2] = getControlField(flag);
-    /*
-    if(isUA==1) 
-	frame[2] = FRAME_C_UA;
-    else if (isUA==2)
-	frame[2] == FRAME_C_DISC;
-    else
-	frame[2] = FRAME_C_SET;*/
-    
     frame[3] = (frame[1] ^ frame[2]);
     frame[4] = FLAG;
     
@@ -36,8 +26,8 @@ char* build_frame_SU(char *flag)
 char* build_frame_I(char* data, unsigned int data_length){
 
     char *frame = NULL;
-    data_link.frame_size = FRAME_SIZE + data_length+1 ; //frame size, with data length and an extra byte for BCC2
-    frame = (char *) malloc(data_link.frame_size);
+    int total = FRAME_SIZE + data_length+1 ; //frame size, with data length and an extra byte for BCC2
+    frame = (char *) malloc(total);
     
     //printf("BUILD : frame size (suposto) %d\n",data_link.frame_size);
  
@@ -62,8 +52,7 @@ char* build_frame_I(char* data, unsigned int data_length){
 
 int receive(int fd, char* flag){
 
-   char* frame = NULL;
-   frame = (char *) malloc(data_link.frame_size);     //comecamos por reservar espaço para uma frame do tipo S ou U, se for do tipo I fazemos realloc
+   char buf[BUF_SIZE];
    
    State state = START;
    int size = 0;
@@ -87,7 +76,7 @@ int receive(int fd, char* flag){
            case START:
                if (c == FLAG) 
                {
-                   frame[size] = c;
+                   buf[size] = c;
                    size++;
                    state = FLAG_RCV;
                }
@@ -95,7 +84,7 @@ int receive(int fd, char* flag){
            case FLAG_RCV:
                if(c == FRAME_A)       //nao esta bem!!!!!!!!!!!!!!!!!!!!!! temos de ter em conta se é 0x03 ou 0x01 (ainda so funciona para 0x03)
                {
-                   frame[size] = c;
+                   buf[size] = c;
                    size++;
                    state = A_RCV;
                }
@@ -109,7 +98,7 @@ int receive(int fd, char* flag){
 		tmp = getControlField(flag);
                if(c == tmp)
                {
-                   frame[size] = c;
+                   buf[size] = c;
                    size++;
                    state = C_RCV;
                }
@@ -126,11 +115,11 @@ int receive(int fd, char* flag){
                break;
            case C_RCV:
                
-               bcc = frame[1] ^ frame[2];
+               bcc = buf[1] ^ buf[2];
                
                if(c == bcc)
                {
-                   frame[size] = c;
+                   buf[size] = c;
                    size++;
                    state = BCC_OK;
                }
@@ -152,12 +141,13 @@ int receive(int fd, char* flag){
                    {
                        hasData = 0;
                    }
-                   frame[size] = c;
+                   buf[size] = c;
+	           size++;
                    state = STOP;    //ultimo byte
                }
                else //trama do tipo I
                {
-                   frame[size] = c;
+                   buf[size] = c;
                    size++;
                }
                break;
@@ -170,23 +160,38 @@ int receive(int fd, char* flag){
        
    }
    
-   frame = desstuff(frame,data_link.frame_size);
+   //isto aqui nao e bem assim
+   char* frame = NULL;
+   frame = (char *) malloc(size);
+   frame = buf;
+   //--------------------------
+   
+   printf("Receive antes do desstuffing\n");
+   display(frame,size);
+  
+   char *new_frame = desstuff(frame,size);
+   
+   printf("Receive depois do desstuffing\n");
+   display(new_frame,10); //temporario
    
    if(hasData)
    {
-       int data_length = data_link.frame_size - FRAME_SIZE - 1; //-1 por causa da proteção dupla
-       
-       int i, bcc2;
+       int data_length = size - FRAME_SIZE - 1; //-1 por causa da proteção dupla	
+
+       int i;
+       char bcc2 = (char)0x0;
        for(i = 0; i < data_length; i++){
-           bcc2 ^= frame[4+i];
+           bcc2 ^= new_frame[4+i];
        }
        
-       if(bcc2 != frame[4+data_length]){
-           printf("erro no bcc2!\n");
+       if(bcc2 != new_frame[4+data_length]){
+           printf("WARNING: erro no bcc2!\n");
            return -1;
-       }
+    }
+    
+    free(new_frame);
         
-        //nao sei se faltam coisas aqui... tipo colocar a mensagem em algum lado, ou assim.
+    //nao sei se faltam coisas aqui... tipo colocar a mensagem em algum lado, ou assim.
        
    }
    
@@ -246,8 +251,6 @@ char* stuff(char *frame, int frame_length){
         newframe_length++;
     }
     
-    data_link.frame_size = newframe_length;
-    
     //reservar espaço na memoria
     char* newframe = (char *) malloc(newframe_length);
     
@@ -278,19 +281,18 @@ char* stuff(char *frame, int frame_length){
 char* desstuff(char *frame, int frame_length){
     
     int newframe_length = frame_length; //começa com o original e tira quando encontra um escape
-    
+
     int i;
     for (i = 1; i < (frame_length - 1); i++)
     {
         char c = frame[i];
+
         if (c == ESCAPE)
         {
             newframe_length--;
         }
     }
-    
-    data_link.frame_size = newframe_length;
-    
+
      //reservar espaço na memoria
     char* newframe = (char *) malloc(newframe_length);
     
@@ -321,4 +323,16 @@ char* desstuff(char *frame, int frame_length){
     newframe[j] = FLAG;
     
     return newframe;
+}
+
+void display(char*frame, int n){
+    
+    printf(">>>>>>>>>>\n");
+    
+    int i;
+    for(i = 0; i < n; i++){
+        printf("frame[%d] = 0x%x\n",i,frame[i]);
+    }
+    
+    printf(">>>>>>>>>>\n");
 }
