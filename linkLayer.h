@@ -46,9 +46,9 @@ int receive(int fd, char* flag);
 
 char getControlField(char* flag);
 
-char* stuff(char *frame, int frame_length);
+int stuff(char **frame, int frame_length);
 
-char* desstuff(char *frame, int frame_length);
+int desstuff(char **frame, int frame_length);
 
 int llclose(int fd, int isReceiver);
 

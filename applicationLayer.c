@@ -18,15 +18,14 @@ int sendControlPackage(char control,int fd,char * file_name, char * file_size, c
 {
   char *pkg = (char*)malloc(MAX_PKG_SIZE*sizeof(char)+1);
 
-    sprintf(pkg,"%c%c%c%s%c%c%s%c%c%s%c%c%s",(char)control,
-      (char)FILE_SIZE,(char)strlen(file_size),file_size,
-      (char)FILE_NAME,(char)strlen(file_name),file_name,
-      (char)FILE_DATE,(char)strlen(file_date),file_date,
-      (char)FILE_PERM,(char)strlen(file_perm),file_perm);
+    sprintf(pkg,"%c%c%c%s%c%c%s%c%c%s%c%c%s",control,
+      FILE_SIZE,(char)strlen(file_size),file_size,
+      FILE_NAME,(char)strlen(file_name),file_name,
+      FILE_DATE,(char)strlen(file_date),file_date,
+      FILE_PERM,(char)strlen(file_perm),file_perm);
 
   int written = 0;
   int STOP = 0;
-  
 
     while(!STOP){
       if((written += llwrite(fd,pkg,strlen(pkg))) == -1){
@@ -52,12 +51,12 @@ int sendDataPackage(int fd, char * data, int sequenceN,unsigned int size)
 	char *pkg = (char*)malloc(MAX_PKG_SIZE*sizeof(char)+1);
 
   
-  sprintf(pkg,"%c%c%c%c%s",(char)PKG_DATA,
+  sprintf(pkg,"%c%c%c%c%s",PKG_DATA,
                           (char)sequenceN,
                           (char)size-(size/DATA_SIZE),
                           (char)size-(size/DATA_SIZE),
                           data);
-
+	
 
   int written = 0;
   int STOP = 0;
@@ -77,98 +76,55 @@ int sendDataPackage(int fd, char * data, int sequenceN,unsigned int size)
 
 int analizePackage(char* data, struct package pkg){
 
-int n_bytes = 0;
-char tmp[36];
-int i = 0;
+int i = 0, n_bytes;
 
-//DEBUG
-//Test control package
-/*char data[MAX_PKG_SIZE+1];
-  sprintf(data,"%c%c%c%s%c%c%s%c%c%s%c%c%s",(char)PKG_START,
-                (char) 0, (char) 3, "999",
-                (char) 1, (char) 11, "constants.h",
-                (char) 2, (char) 10, "1477342734",
-                (char) 3, (char) 5, "33152");*/
+if(data[0] == PKG_START || data[0] == PKG_END){
+  pkg.type = data[0];
 
-//Test data package
-/*char data[MAX_PKG_SIZE+1];
-  sprintf(data,"%c%c%c%c%s",(char)PKG_DATA,
-                (char) 0, //Sequence Number
-                (char) 0, //N2 = SIZE_DATA * N2
-                (char) 19, //N1 SIZE = N2*SIZE_DATA+N1
-                "ola isto e um teste");*/
+  for(i = 1; i < strlen(data);i++){
 
+    switch(data[i]){
 
-if(data[0] == (char)PKG_START || data[0] == (char)PKG_END){
-
-  pkg.type = data[i];
-  i++;
-
-  if(data[i] != (char)FILE_SIZE){                 // SIZE
-    perror("Wrong order of START pck received");
-    exit(-1);
+      case FILE_SIZE:{
+        n_bytes = atoi(data[i+1]);   //number of bytes for the size
+        char size[n_bytes];
+        memcpy(size,data[i] + 2,n_bytes);
+        pkg.size = atoi(size);     //converte para int
+        i+= n_bytes+1;
+        break;
+      }
+      case FILE_NAME:{
+        n_bytes = atoi(data[i+1]);   //number of bytes for the size
+        memcpy(pkg.name,data[i] + 2,n_bytes);
+        i+= n_bytes+1;
+        break;
+      }
+      case FILE_DATE:{
+        n_bytes = atoi(data[i+1]);   //number of bytes for the size
+        char size[n_bytes];
+        memcpy(size,data[i] + 2,n_bytes);
+        pkg.date = atoi(size);     //converte para int
+        i+= n_bytes+1;
+        break;
+      }
+      case FILE_PERM:{
+        n_bytes = atoi(data[i+1]);   //number of bytes for the size
+        char size[n_bytes];
+        memcpy(size,data[i] + 2,n_bytes);
+        pkg.perm = atoi(size);     //converte para int
+        i+= n_bytes+1;
+        break;
+      }
+    }
   }
 
-  n_bytes = data[i+1];
-  memcpy(tmp,data+2,n_bytes);
-  pkg.size = atoi(tmp);
-  i += n_bytes+2;
-
-  if(data[i] != (char)FILE_NAME){                 
-    perror("Wrong order of START pck received");  // NAME
-    exit(-1);
-  }
-
-  n_bytes = data[i+1];
-  memcpy(pkg.name,data+i+2,n_bytes);
-  i+= n_bytes+2;
-
-  if(data[i] != (char)FILE_DATE){                 // DATE
-    perror("Wrong order of START pck received");
-    exit(-1);
-  }
-
-  n_bytes = data[i+1];
-  printf("NB Date - %d\n",n_bytes);
-  memcpy(tmp,data+i+2,n_bytes);
-  pkg.date = atoi(tmp);
-  i+= n_bytes+2;
-
-  if(data[i] != (char)FILE_PERM){                 // DATE
-    perror("Wrong order of START pck received");
-    exit(-1);
-  }
-
-  n_bytes = data[i+1];
-  memcpy(tmp,data+i+2,n_bytes+1);   //because of /0
-  pkg.perm = atoi(tmp);
-
-  /* DEBUG
-  printf("Type - %d\n",pkg.type);
-  printf("NB Size - %d\n",n_bytes);
-  printf("Size - %d\n", pkg.size);
-  printf("NB Name - %d\n",n_bytes);
-  printf("Name - %s\n", pkg.name);
-  printf("Date - %d\n", pkg.date);
-  printf("NB PERM - %d\n",n_bytes);
-  printf("Perm - %d\n", pkg.perm);
-  */
 }
 else if(data[0] == PKG_DATA){
 
   pkg.type = data[0];
-
   pkg.number = data[1];
-  pkg.size = data[2]*DATA_SIZE+data[3];
-  memcpy(pkg.data,data + 4,pkg.size);
-
-  /* DEBUG */
-  /*printf("Type - %d\n",pkg.type);
-  printf("Number - %d\n",pkg.number);
-  printf("N2 - %d\n", data[2]);
-  printf("N1 - %d\n",data[3]);
-  printf("Size - %d\n", pkg.size);
-  printf("Data - %s\n", pkg.data);*/
+  pkg.size = atoi(data[2])*DATA_SIZE+atoi(data[3]);
+  memcpy(pkg.data,data + 4,strlen(data) - 4);
 
 }
 else{
@@ -176,7 +132,7 @@ else{
   exit(-1);
 }
 
-return 0;
+printf("%c%d\n",pkg.type,pkg.size);
 }
 
 int sender(char* port, char* filepath){
@@ -264,7 +220,7 @@ int sender(char* port, char* filepath){
 int receiver(char* msg){
 
 struct package pkg;
-analizePackage("",pkg);
+analizePackage(msg,pkg);
 return 0;
 }
 

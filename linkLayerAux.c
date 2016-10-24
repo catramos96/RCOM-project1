@@ -2,6 +2,9 @@
 
 //volatile int STOP=FALSE;
 
+/**
+ * Cria uma trama do tipo S ou U
+ */
 char* build_frame_SU(char *flag)      
 {
     char *frame = NULL;
@@ -17,11 +20,11 @@ char* build_frame_SU(char *flag)
 }
 
 /*
- * @briefFunction that creates a frame I
+ * @brief Function that creates a frame I
  * @param data to transport
  * @param data_length
  * @param s NS of Frame I
- * @FrameI : |F|A|C|BCC1|DATA|BCC2|F|
+ * @return FrameI : |F|A|C|BCC1|DATA|BCC2|F|
  */
 char* build_frame_I(char* data, unsigned int data_length){
 
@@ -29,8 +32,6 @@ char* build_frame_I(char* data, unsigned int data_length){
     int total = FRAME_SIZE + data_length+1 ; //frame size, with data length and an extra byte for BCC2
     frame = (char *) malloc(total);
     
-    //printf("BUILD : frame size (suposto) %d\n",data_link.frame_size);
- 
     frame[0] = FLAG;    
     frame[1] = FRAME_A;
     frame[2] = (FRAME_C_I << 6) & data_link.sequenceNumber; //s=0
@@ -45,14 +46,18 @@ char* build_frame_I(char* data, unsigned int data_length){
     
     frame[5+data_length] = FLAG;
     
-    //printf("BUILD : frame size (real) %d\n",strlen(frame));
-    
     return frame;
 }
 
+/**
+ * Recebe uma trama
+ */
 int receive(int fd, char* flag){
+    
+   int maxSixe = 30; // este valor ainda não sei se esta correto, mas quando estiver vai faz parte das constantes
 
-   char buf[BUF_SIZE];
+   char* buf = NULL;
+   buf = (char *) malloc(maxSixe);
    
    State state = START;
    int size = 0;
@@ -68,7 +73,7 @@ int receive(int fd, char* flag){
        if (state != STOP) {
            if((read(fd,&c,1)) == -1){
                perror("read receiver");
-               return -1;
+               return 1;
            }
        }
        
@@ -160,36 +165,31 @@ int receive(int fd, char* flag){
        
    }
    
-   //isto aqui nao e bem assim
-   char* frame = NULL;
-   frame = (char *) malloc(size);
-   frame = buf;
-   //--------------------------
-   
-   printf("Receive antes do desstuffing\n");
-   display(frame,size);
+   buf = (char*)realloc(buf,size);  //realloc para o tamanho certo da trama
+    
+   /*printf("Receive antes do desstuffing\n");
+   display(buf,size);*/
   
-   char *new_frame = desstuff(frame,size);
+   int newsize = desstuff(&buf,size);   //recebe com stuff, fazemos desstuffing
    
-   printf("Receive depois do desstuffing\n");
-   display(new_frame,10); //temporario
+  /* printf("Receive depois do desstuffing\n");
+   display(buf,newsize); */
    
+   //se e uma trama do tipo I, e necessario analisar despois do stuffing
    if(hasData)
    {
-       int data_length = size - FRAME_SIZE - 1; //-1 por causa da proteção dupla	
+       int data_length = newsize - FRAME_SIZE - 1; //-1 por causa da proteção dupla	
 
        int i;
        char bcc2 = (char)0x0;
        for(i = 0; i < data_length; i++){
-           bcc2 ^= new_frame[4+i];
+           bcc2 ^= buf[4+i];
        }
        
-       if(bcc2 != new_frame[4+data_length]){
+       if(bcc2 != buf[4+data_length]){
            printf("WARNING: erro no bcc2!\n");
-           return -1;
+           return 1;
     }
-    
-    free(new_frame);
         
     //nao sei se faltam coisas aqui... tipo colocar a mensagem em algum lado, ou assim.
        
@@ -201,11 +201,16 @@ int receive(int fd, char* flag){
    {
        data_link.sequenceNumber = (tmp >> 7) & 0;
    }
+   
+   free(buf);   //liberta o espaco em memoria
  
    return 0;
     
 }
 
+/**
+ * 
+ */
 char getControlField(char* flag)
 {
     if(strcmp("SET",flag) == 0){
@@ -235,7 +240,7 @@ char getControlField(char* flag)
 /**
  * 
  */
-char* stuff(char *frame, int frame_length){
+int stuff(char **frame, int frame_length){
      
     int newframe_length = 2; //as flags de incio e fim
     
@@ -243,7 +248,7 @@ char* stuff(char *frame, int frame_length){
     int i;
     for (i = 1; i < (frame_length - 1); i++)
     {
-        char c = frame[i];
+        char c = (*frame)[i];
         if ((c == FLAG) || (c == ESCAPE))
         {
             newframe_length++;
@@ -251,80 +256,51 @@ char* stuff(char *frame, int frame_length){
         newframe_length++;
     }
     
-    //reservar espaço na memoria
-    char* newframe = (char *) malloc(newframe_length);
+    //reservar espaço na memoria    
+    *frame = (char*)realloc(*frame,newframe_length);
     
-    int j = 0; //percorre newframe
-    newframe[j] = FLAG;
-    j++;
-    
-    //ignora o primeiro caracter e ultimos caracteres que correpespondesm a flag
-    for(i =1; i < (frame_length-1); i++){
-        if(frame[i] == FLAG){
-            newframe[j]= ESCAPE;
-            j++;
-            newframe[j]= FLAG ^ AUX;
-        }else if(frame[i] == ESCAPE){
-            newframe[j] = ESCAPE;
-            j++;
-            newframe[j]= ESCAPE ^ AUX;
-        }else{
-            newframe[j] = frame[i];
+    for(i = 1; i < (frame_length-1); i++)
+    {
+        char c = (*frame)[i];
+        if(c == FLAG || c == ESCAPE)
+        {
+            memmove(*frame + i + 1, *frame + i, frame_length - i);//destino, source, num de bytes -> avançar 1 casa todos os bytes para a frente
+            (*frame)[i] = ESCAPE;
+            (*frame)[i++] = c ^ AUX;
+            frame_length++;
         }
-        j++;
     }
-    newframe[j] = FLAG;
     
-    return newframe;
+    return newframe_length;
 }
 
-char* desstuff(char *frame, int frame_length){
+/**
+ * Processo contrario ao stuff
+ */
+int desstuff(char **frame, int frame_length){
     
-    int newframe_length = frame_length; //começa com o original e tira quando encontra um escape
-
     int i;
     for (i = 1; i < (frame_length - 1); i++)
     {
-        char c = frame[i];
-
+        char c = (*frame)[i];
         if (c == ESCAPE)
         {
-            newframe_length--;
+            memmove(*frame + i, *frame + i + 1, frame_length - i - 1);//destino, source, num de bytes -> avançar 1 casa todos os bytes para a tras
+            frame_length--;
+            
+            (*frame)[i] ^= AUX;
         }
     }
-
-     //reservar espaço na memoria
-    char* newframe = (char *) malloc(newframe_length);
     
-    int j = 0; //percorre newframe
-    newframe[j] = FLAG;
-    j++;
+    //realocar o espaco em memoria (o tamanho foi modificado)
+    *frame = (char *)realloc(*frame, frame_length);
     
-    i = 1;
-    //ignora o primeiro caracter e ultimos caracteres que correpespondesm a flag
-    while(i != frame_length-1)
-    {
-        if(frame[i] == ESCAPE)
-        {
-            i++;
-            if(frame[i] == (FLAG ^ AUX)){
-                newframe[j] = FLAG;
-            }else if(frame[i] == (ESCAPE ^ AUX)){
-                newframe[j] = ESCAPE;
-            }
-        }else
-        {
-            newframe[j] = frame[i];
-        }
-        
-        i++;
-        j++;
-    }
-    newframe[j] = FLAG;
-    
-    return newframe;
+    return frame_length;
 }
 
+/**
+ * So para debugging
+ */
 void display(char*frame, int n){
     
     printf(">>>>>>>>>>\n");

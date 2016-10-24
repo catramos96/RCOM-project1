@@ -1,5 +1,5 @@
-//#include "linkLayer.c"
-#include "applicationLayer.c"
+#include "linkLayer.c"
+#include "applicationLayer.h"
 
 /**
  * Recebe as informações iniciais.
@@ -9,15 +9,15 @@
  */
 int main(int argc, char** argv)
 {
-    //testar application layer
+  /*  //testar application layer
     if(argc != 2)
     {
       exit(1);
     }
-    receiver(argv[1]);
-    //sender(0,argv[1]);
+    //receiver(argv[1]);
+    //sender(0,argv[1]);*/
 
-    /*if ( (argc < 3) || 
+    if ( (argc < 3) || 
 		((strcmp("/dev/ttyS0", argv[1])!=0) && (strcmp("/dev/ttyS1", argv[1])!=0)) ||
 		((strcmp("TRANSMITTER", argv[2])!=0) && (strcmp("RECEIVER", argv[2])!=0)) )
     {
@@ -33,17 +33,16 @@ int main(int argc, char** argv)
 
     int fd = llopen(argv[1],isReceiver);
     
-    
     printf("-----------------------------------------------\n");
  
-    char *data = "abcd";
+    char *data = "ab}d";
     if(isReceiver) llread(fd,NULL);
     else llwrite(fd,data,4);
     
     printf("-----------------------------------------------\n");
     
     llclose(fd,isReceiver);
-    */
+    
     
     /*
      * Teste BYTE stuffing
