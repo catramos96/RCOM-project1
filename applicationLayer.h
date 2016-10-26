@@ -19,6 +19,19 @@ struct applicationLayer {
 						   RECEIVER - path where the file will be saved*/
 };
 
+struct package{
+	int type;
+	//data
+	char data[DATA_SIZE];
+	char number;
+	int size;
+	//control
+	char file_name[36];
+	int total_size;
+	int file_date;
+	int file_perm;
+};
+
 static struct applicationLayer infoLayer;
 static unsigned int sequenceNumber = 1;
 
@@ -28,7 +41,7 @@ int sendControlPackage(char control, char * filename, char * filesize, char * da
 
 int sendDataPackage(char *data, int sequenceN, unsigned int size);
 
-int receiveControlPackage(int type, char * name, int size);
+int receiveControlPackage(struct package *p);
 
 int receiveDataPackage(int type, int size, char * data);
 

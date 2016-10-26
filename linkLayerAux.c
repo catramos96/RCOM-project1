@@ -54,12 +54,11 @@ char* build_frame_I(char* data, unsigned int data_length){
  */
 ReturnType receive(int fd, ReceiveType flag){
     
-   int maxSixe = 30; // este valor ainda não sei se esta correto, mas quando estiver vai faz parte das constantes
+   //int maxSixe = 30; // este valor ainda não sei se esta correto, mas quando estiver vai faz parte das constantes
 
    //ReturnType rt = OK;
 
-   char* buf = NULL;
-   buf = (char *) malloc(maxSixe);
+   char* buf = (char *) malloc(MAX_PKG_SIZE); //ALTERAR - O REALLOC NÃO FUNCIONA SE ULTRAPASSAR ESTE VALOR
    
    State state = START;
    int size = 0;
@@ -167,8 +166,10 @@ ReturnType receive(int fd, ReceiveType flag){
        
    }
    
+   printf("ANtes realloc\n");
+   /* VAI CRASHAR --------------------------------------*/
    buf = (char*)realloc(buf,size);  //realloc para o tamanho certo da trama
-    
+    printf("Depois realloc\n");
    /*printf("Receive antes do desstuffing\n");
    display(buf,size);*/
   

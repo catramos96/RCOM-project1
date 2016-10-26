@@ -32,8 +32,8 @@ int sendControlPackage(char control,char * file_name, char * file_size, char * f
 {
     int buffer_size = 9 + strlen(file_size) + strlen(file_name) + strlen(file_date) + strlen(file_perm);
 
-    char pkg[buffer_size];
-    int i = 0,j = 0;
+    char *pkg = malloc(buffer_size);
+    int i = 0;
 
     pkg[i] = control;
 
@@ -45,9 +45,9 @@ int sendControlPackage(char control,char * file_name, char * file_size, char * f
     pkg[i+1] = strlen(file_size);
     memcpy(pkg+i+2,file_size,strlen(file_size));
 
-    /*printf("SizeT - %x\n",pkg[i]);                //DEBUG
+    printf("SizeT - %x\n",pkg[i]);                //DEBUG
     printf("SizeL - %x\n",pkg[i+1]);
-    printf("SizeV - %s\n",pkg + i + 2);*/
+    printf("SizeV - %s\n",pkg + i + 2);
 
     i += 2 + strlen(file_size);
 
@@ -55,9 +55,9 @@ int sendControlPackage(char control,char * file_name, char * file_size, char * f
     pkg[i+1] = strlen(file_name);
     memcpy(pkg+i+2,file_name,strlen(file_name));
 
-    /*printf("NameT - %x\n",pkg[i]);                //DEBUG
+    printf("NameT - %x\n",pkg[i]);                //DEBUG
     printf("NameL - %x\n",pkg[i+1]);
-    printf("NameV - %s\n",pkg + i + 2);*/
+    printf("NameV - %s\n",pkg + i + 2);
 
     i += 2 + strlen(file_name);
 
@@ -65,9 +65,9 @@ int sendControlPackage(char control,char * file_name, char * file_size, char * f
     pkg[i+1] = strlen(file_date);
     memcpy(pkg+i+2,file_date,strlen(file_date));
 
-    /*printf("DateT - %x\n",pkg[i]);                //DEBUG
+    printf("DateT - %x\n",pkg[i]);                //DEBUG
     printf("DateL - %x\n",pkg[i+1]);
-    printf("DateV - %s\n",pkg + i + 2);*/
+    printf("DateV - %s\n",pkg + i + 2);
 
     i += 2 + strlen(file_date);
 
@@ -75,17 +75,17 @@ int sendControlPackage(char control,char * file_name, char * file_size, char * f
     pkg[i+1] = strlen(file_perm);
     memcpy(pkg + i + 2,file_perm,strlen(file_perm));
 
-    /*printf("PermT - %x\n",pkg[i]);                //DEBUG
+    printf("PermT - %x\n",pkg[i]);                //DEBUG
     printf("PermL - %x\n",pkg[i+1]);
     printf("PermV - %s\n",pkg + i + 2);
 
-    printf("Pacote %s\n LENGTH %d\n\n",pkg,buffer_size);*/
+    printf("Pacote %s\n LENGTH %d\n\n",pkg,buffer_size);
 
-      /*if(llwrite(infoLayer.fileDescriptor,pkg,buffer_size) == -1){
+      if(llwrite(infoLayer.fileDescriptor,pkg,buffer_size) == -1){
         perror("Could not send control PACKAGE");
         exit(-1);
-      }*/
-
+      }
+      free(pkg);
   return 0;
 }
 
@@ -115,30 +115,72 @@ int sendDataPackage(char * data, int sequenceN,unsigned int size)
   return 0;
 }
 
-int receiveControlPackage(int type, char *  name, int size){
+int receiveControlPackage(struct package *p){
 
- // char * data = malloc(MAX_PKG_SIZE); //= malloc(sizeof(char)*MAX_PKG_SIZE);
-	char *data = malloc(MAX_PKG_SIZE);
+	 char data[MAX_PKG_SIZE];
+   int n_bytes = 0, i = 0;
+   char tmp[36];
+
   	if(llread(infoLayer.fileDescriptor,data) == -1){
       perror("Could not read");
-      exit(-1);
+      return -1;
     }
 
-    printf("Type %x\n",data[0]);
-    printf("T1 %x\n",data[1]);
+    p->type = data[i++];
 
-    //printf("%s\n",data);
+    if(p->type == PKG_START || p->type == PKG_END){
 
-    /*if(type == PKG_START || type == PKG_END){
-      printf("OK\n");
+      if(data[i++] != FILE_SIZE){
+        perror("Package don't respect order");
+        return -1;
+      }
+      n_bytes = data[i++];
+      memcpy(tmp,data + i,n_bytes);
+      p->total_size = atoi(tmp);
+      i+= n_bytes;
+
+
+      if(data[i++] != FILE_NAME){
+        perror("Package don't respect order");
+        return -1;
+      }
+      n_bytes = data[i++];
+      memcpy(p->file_name,data + i,n_bytes);
+      i+= n_bytes;
+
+
+      if(data[i++] != FILE_DATE){
+        perror("Package don't respect order");
+        return -1;
+      }
+      n_bytes = data[i++];
+      memcpy(tmp,data + i,n_bytes);
+      p->file_date = atoi(tmp);
+      i+= n_bytes;
+
+
+      if(data[i++] != FILE_PERM){
+        perror("Package don't respect order");
+        return -1;
+      }
+      n_bytes = data[i++];
+      memcpy(tmp,data + i,n_bytes);
+      p->file_perm = atoi(tmp);
+
+      /*
+      printf("Type - %d\n",p->type);        //DEBUG
+      printf("Size - %d\n",p->total_size);     
+      printf("Name - %s\n",p->file_name);
+      printf("Date - %d\n",p->file_date);
+      printf("Perm - %d\n",p->file_perm);*/
+
 
     }
     else{
       perror("Type of package received unknown");
-      exit(-1);
-    }*/
+      return -1;
+    }
 
-    //free(data);
     return 0;
 }
 
@@ -228,12 +270,13 @@ int sender(){
 
 int receiver(){
 	
-  int file, size, type;
-  char *data = malloc(DATA_SIZE);
+  int file;
 
-  printf("A analizePackage\n");
+  struct package *p = malloc(sizeof(struct package));
 
-  if(receiveControlPackage(type,data,size)){
+
+
+  if(receiveControlPackage(p)){
     perror("Error at receiving the START package");
     exit(-1);
   }
