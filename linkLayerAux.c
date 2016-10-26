@@ -194,7 +194,6 @@ ReturnType receive(int fd, char* flag){
         
 	   //colocar a mensagem recebida na struct
 	   memcpy(data_link.frame, &buf[4], data_link.frame_size); //destination, source, num 
-       
    }
    
    //se recebemos uma trama do tipo RR significa que o N(s) a proxima trama do tipo I vai depender deste N(r), por isso podemos ja tratar do assunto

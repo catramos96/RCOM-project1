@@ -117,23 +117,27 @@ int sendDataPackage(char * data, int sequenceN,unsigned int size)
 
 int receiveControlPackage(int type, char *  name, int size){
 
-  char * data = malloc(sizeof(char)*MAX_PKG_SIZE);
-
-  if(llread(infoLayer.fileDescriptor,data) == -1){
+ // char * data = malloc(MAX_PKG_SIZE); //= malloc(sizeof(char)*MAX_PKG_SIZE);
+	char *data = malloc(MAX_PKG_SIZE);
+  	if(llread(infoLayer.fileDescriptor,data) == -1){
       perror("Could not read");
       exit(-1);
     }
 
-    if(type == PKG_START || type == PKG_END){
+    printf("%c\n",data[0]);
+
+    //printf("%s\n",data);
+
+    /*if(type == PKG_START || type == PKG_END){
       printf("OK\n");
 
     }
     else{
       perror("Type of package received unknown");
       exit(-1);
-    }
+    }*/
 
-    free(data);
+    //free(data);
     return 0;
 }
 
@@ -170,7 +174,7 @@ int sender(){
       char *file_name = infoLayer.file_path+pos+1;
       char file_size[16], file_date[16], file_perm[16];
       
-      sprintf(file_size,"%lu",getFileSize(file));
+      sprintf(file_size,"%d",getFileSize(file));
       sprintf(file_date,"%lu",st.st_mtime);
       sprintf(file_perm,"%u",st.st_mode);
 
@@ -223,16 +227,15 @@ int sender(){
 
 int receiver(){
 	
-
-  /*int file, size, type;
-  char *data = malloc(DATA_SIZE);*/
+  int file, size, type;
+  char *data = malloc(DATA_SIZE);
 
   printf("A analizePackage\n");
 
-  /*if(receiveControlPackage(fd,type,data,size)){
+  if(receiveControlPackage(type,data,size)){
     perror("Error at receiving the START package");
     exit(-1);
-  }*/
+  }
 
   //printf("%d\n",type);
   
@@ -343,12 +346,12 @@ int initApplicationLayer(char *port,int status, char * file_path){
   memcpy(infoLayer.file_path,file_path,strlen(file_path));
 
   //inicializa o dataLink
-  //init_linkLayer(port);
+  init_linkLayer(port);
 
-  /*if((infoLayer.fileDescriptor = llopen(port,status)) == -1){
+  if((infoLayer.fileDescriptor = llopen(port,status)) == -1){
     perror("Could not open port of the receiver");
     exit(-1);
-  }*/
+  }
 
   printf("Status - %d\nFilePath - %s\n",infoLayer.status, infoLayer.file_path);
 
@@ -365,7 +368,7 @@ int initApplicationLayer(char *port,int status, char * file_path){
     exit(-1);
   }
 
-  //close(infoLayer.fileDescriptor);
+  close(infoLayer.fileDescriptor);
 
   return 0;
 }

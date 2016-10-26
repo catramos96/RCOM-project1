@@ -255,10 +255,8 @@ int llread(int fd, char * buffer){
 		else
 		{
 			printf("Trama I recebida!\n");
-			memcpy(&buffer, data_link.frame, data_link.frame_size); //destination, source, num B
+			memcpy(buffer, data_link.frame, data_link.frame_size); //destination, source, num B
 
-                        printf("%s\n",buffer);
-                        
  			//criacao da trama RR/REJ (ainda só vamos criar a RR)
         	frame = build_frame_SU("RR");
 		}	
