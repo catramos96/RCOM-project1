@@ -23,14 +23,17 @@
 #define FRAME_C_RR (char)0xA5	//campo de controlo para trama RR
 #define FRAME_C_REJ (char)0xA1	//campo de controlo para trama REJ
 
-#define	FILE_SIZE	0
-#define FILE_NAME	1
-#define	FILE_DATE	2
-#define	FILE_PERM	3
+#define	FILE_SIZE	1
+#define FILE_NAME	2
+#define	FILE_DATE	3
+#define	FILE_PERM	4
 
 #define	PKG_DATA	1
 #define	PKG_START	2
 #define PKG_END		3
 
-#define DATA_SIZE 		245
-#define MAX_PKG_SIZE	254
+#define DATA_SIZE 		114
+#define MAX_PKG_SIZE	124
+
+#define RECEIVER		1
+#define TRANSMITTER		0

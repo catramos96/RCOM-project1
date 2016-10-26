@@ -13,34 +13,27 @@
 
 /*PODE SER ALTERADO*/
 struct applicationLayer {
-	int fileDescriptor; /*Descritor correspondente à porta série*/
-	int status; 		/*TRANSMITTER | RECEIVER*/
+	int fileDescriptor;  /*Descritor correspondente à porta série*/
+	int status; 		 /*TRANSMITTER | RECEIVER*/
+	char file_path[128]; /*TRANSMITTER - path of the file to send
+						   RECEIVER - path where the file will be saved*/
 };
 
-struct package{
-	char type;
-	//data information
-	int number;
-	int size;
-	char data[DATA_SIZE];
-	//control information
-	char name[32];
-	int date;
-	int perm;
-};
+static struct applicationLayer infoLayer;
+static unsigned int sequenceNumber = 1;
 
-static unsigned int sequenceNumber = 0;
+int getFileSize(int file_descriptor);
 
-int sendControlPackage(char control, int fd,char * filename, char * filesize, char * date, char * permissions);
+int sendControlPackage(char control, char * filename, char * filesize, char * date, char * permissions);
 
-int sendDataPackage(int fd,char *data, int sequenceN, unsigned int size);
+int sendDataPackage(char *data, int sequenceN, unsigned int size);
 
-int analizePackage(char* data, struct package * pkg);
+int receiveControlPackage(int type, char * name, int size);
 
-int sender(char* port, char* filepath);
+int receiveDataPackage(int type, int size, char * data);
 
-int receiver(char* port,char* filepath);
+int sender();
 
+int receiver();
 
-
-
+int initApplicationLayer(char * port,int status, char * file_path);
