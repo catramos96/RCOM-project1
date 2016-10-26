@@ -21,15 +21,19 @@ typedef struct
 }dataLink;
 
 typedef enum {
-	START, FLAG_RCV, A_RCV, C_RCV, BCC_OK, STOP
+    START, FLAG_RCV, A_RCV, C_RCV, BCC_OK, STOP
 } State;
 
 //ERROR - qualquer erro de escrita ou leitura ou que aborte o programa
 //DATA ERROR - erro na interpretacao dos dados da trama I
 //OK - sem erros
 typedef enum {
-	ERROR, DATAERROR, OK
+    ERROR, DATAERROR, OK, MISTAKENTYPE, IS_RR, IS_REJ
 } ReturnType;
+
+typedef enum {
+    DISC, UA, SET, I, RR, REJ, RR_REJ
+} ReceiveType;
 
 static dataLink data_link;
 
@@ -45,13 +49,13 @@ int llwrite(int fd, char * buffer, int length);
 
 int llread(int fd, char * buffer);
 
-char* build_frame_SU(char *flag); //tramas do tipo S ou UA
+char* build_frame_SU(ReceiveType flag); //tramas do tipo S ou UA
 
 char* build_frame_I(char* data, unsigned int data_length);
 
-ReturnType receive(int fd, char* flag);
+ReturnType receive(int fd, ReceiveType flag);
 
-char getControlField(char* flag);
+char getControlField(ReceiveType flag);
 
 int stuff(char **frame, int frame_length);
 

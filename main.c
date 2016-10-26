@@ -3,24 +3,23 @@
 
 /**
  * Recebe as informações iniciais.
- * porta = /dev/ttyS1
- * flag: TRANSMITTER | RECEIVER (0|1)
- * pathfile
+ * porta
+ * flag: TRANSMITTER | RECEIVER
+ * file				//por agora ainda nao
  */
 int main(int argc, char** argv)
 {
-    //testar application layer
-    if(argc != 4)
+   /* //testar application layer
+    if(argc != 1)
     {
       exit(1);
     }
-    initApplicationLayer(argv[1],atoi(argv[2]),argv[3]);
-    //receiver(argv[1],argv[2]);
-    //sender(argv[1],argv[2]);
-
-    /*if ( (argc < 3) || 
-		((strcmp("/dev/ttyS0", argv[1])!=0) && (strcmp("/dev/ttyS1", argv[1])!=0)) ||
-		((strcmp("TRANSMITTER", argv[2])!=0) && (strcmp("RECEIVER", argv[2])!=0)) )
+    receiver(0,"/home/server/Desktop/rcom-trabalho1");
+    //sender(0,argv[1]);
+*/
+    if ( (argc < 3) || 
+        ((strcmp("/dev/ttyS0", argv[1])!=0) && (strcmp("/dev/ttyS1", argv[1])!=0)) ||
+        ((strcmp("TRANSMITTER", argv[2])!=0) && (strcmp("RECEIVER", argv[2])!=0)) )
     {
       printf("Usage:\twserial SerialPort flag\n\tex: wserial /dev/ttyS1 TRANSMITTER\n");
       exit(1);
@@ -44,7 +43,6 @@ int main(int argc, char** argv)
     printf("-----------------------------------------------\n");
     
     llclose(fd,isReceiver);
-    */
     
     /*
      * Teste BYTE stuffing

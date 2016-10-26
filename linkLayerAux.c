@@ -5,7 +5,7 @@
 /**
  * Cria uma trama do tipo S ou U
  */
-char* build_frame_SU(char *flag)      
+char* build_frame_SU(ReceiveType flag)      
 {
     char *frame = NULL;
     frame = (char *) malloc(FRAME_SIZE);
@@ -52,7 +52,7 @@ char* build_frame_I(char* data, unsigned int data_length){
 /**
  * Recebe uma trama
  */
-ReturnType receive(int fd, char* flag){
+ReturnType receive(int fd, ReceiveType flag){
     
    int maxSixe = 30; // este valor ainda não sei se esta correto, mas quando estiver vai faz parte das constantes
 
@@ -66,7 +66,7 @@ ReturnType receive(int fd, char* flag){
    int done = 0;
    int hasData = 1; //flag que indica se é uma trama do tipo I
    char bcc;
-   char tmp;
+   char controlField;
 
    while (!done) 
    {   
@@ -75,7 +75,7 @@ ReturnType receive(int fd, char* flag){
        if (state != STOP) {
            if((read(fd,&c,1)) == -1){
                perror("read receiver");
-			   return ERROR;
+                return ERROR;
            }
        }
        
@@ -102,11 +102,11 @@ ReturnType receive(int fd, char* flag){
                }
                break;
            case A_RCV:
-		tmp = getControlField(flag);
-               if(c == tmp)
+               if(c != FLAG)
                {
                    buf[size] = c;
                    size++;
+                   controlField = c;
                    state = C_RCV;
                }
                else if(c == FLAG)
@@ -114,11 +114,11 @@ ReturnType receive(int fd, char* flag){
                    size = 1;
                    state = FLAG_RCV;
                }
-               else
+               /*else
                {
                    size = 0;
                    state = START;
-               }
+               }*/
                break;
            case C_RCV:
                
@@ -177,9 +177,13 @@ ReturnType receive(int fd, char* flag){
   /* printf("Receive depois do desstuffing\n");
    display(buf,newsize); */
    
-   //se e uma trama do tipo I, e necessario analisar depois do stuffing
+   //trama do tipo I
    if(hasData)
    {
+       //verificar que é do tipo I
+       if(controlField != getControlField(flag))
+           return MISTAKENTYPE;
+        
        data_link.frame_size = newsize - FRAME_SIZE - 1; //-1 por causa da proteção dupla	
 
        int i;
@@ -192,16 +196,37 @@ ReturnType receive(int fd, char* flag){
            return DATAERROR;
        }
         
-	   //colocar a mensagem recebida na struct
-	   memcpy(data_link.frame, &buf[4], data_link.frame_size); //destination, source, num 
+        //colocar a mensagem recebida na struct
+        memcpy(data_link.frame, &buf[4], data_link.frame_size); //destination, source, num 
+       
+   }
+   else
+   {
+       //e necessario verificar se o tipo recebido e igual ao lido
+       if(flag == RR_REJ){
+           char rr = getControlField(RR);
+           char rej = getControlField(REJ);
+           
+           if(rr == buf[2]){
+               data_link.sequenceNumber = (rr >> 7) & 0;
+               return IS_RR;
+           }
+           else if(rej == buf[2]){
+               data_link.sequenceNumber = (rej >> 7) & 0;
+               return IS_REJ;
+           }
+           else
+               return MISTAKENTYPE;
+           
+       }
+       else
+       {
+           if(controlField != getControlField(flag))
+               return MISTAKENTYPE;
+       }
    }
    
-   //se recebemos uma trama do tipo RR significa que o N(s) a proxima trama do tipo I vai depender deste N(r), por isso podemos ja tratar do assunto
-   //PS: nao sei se isto esta correto estar aqui, mas funciona
-   if(strcmp(flag,"RR") == 0)
-   {
-       data_link.sequenceNumber = (tmp >> 7) & 0;
-   }
+   //se recebemos uma trama do tipo RR significa que o N(s) a proxima trama do tipo I vai depender deste N(r)//
    
    free(buf);   //liberta o espaco em memoria
  
@@ -212,32 +237,32 @@ ReturnType receive(int fd, char* flag){
 /**
  * 
  */
-char getControlField(char* flag)
+char getControlField(ReceiveType flag)
 {
-    if(strcmp("SET",flag) == 0){
+    if(SET == flag){
         return FRAME_C_SET;
     }
-    if(strcmp("UA",flag) == 0){
+    if(UA == flag){
         return FRAME_C_UA;
     }
-    if(strcmp("DISC",flag) == 0){
+    if(DISC == flag){
         return FRAME_C_DISC;
     }
-    if(strcmp("RR",flag) == 0){
+    if(RR == flag){
         // o nr é sempre o oposto do que recebe (TRATAR DISTO DEPOIS)
         int nr = 1;
         if(data_link.sequenceNumber == 0) nr = 0;   
         return (FRAME_C_RR << 7) & nr;
         //return FRAME_C_RR;
     }
-    if(strcmp("REJ",flag) == 0){
+    if(REJ == flag){
         // o nr é sempre o oposto do que recebe (TRATAR DISTO DEPOIS)
         int nr = 1;
         if(data_link.sequenceNumber == 0) nr = 0;   
         return (FRAME_C_RR << 7) & nr;
         //return FRAME_C_REJ;
     }
-    if(strcmp("I",flag) == 0){
+    if(I == flag){
         return (FRAME_C_I << 6) & data_link.sequenceNumber; //o controlo depende do sequenceNumber
 		//return FRAME_C_I;
     }
