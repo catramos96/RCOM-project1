@@ -104,7 +104,7 @@ int llopen_receiver(int fd)
 
 int llopen_sender(int fd)
 {
-	void) signal(SIGALRM, handler);  // instala  rotina que atende interrupcao
+	signal(SIGALRM, handler);  // instala  rotina que atende interrupcao
 	struct termios oldtio,newtio;
 	int res;
 	int done = 0;
@@ -260,7 +260,7 @@ int llread(int fd, char * buffer){
 	else
 	{
 		printf("Trama I recebida!\n");
-		memcpy(&buffer, data_link.frame, data_link.frame_size); //destination, source, num B
+		memcpy(buffer, data_link.frame, data_link.frame_size); //destination, source, num B
 					
 		//criacao da trama RR/REJ (ainda só vamos criar a RR)
 		frame = build_frame_SU(RR);

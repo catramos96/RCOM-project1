@@ -124,7 +124,8 @@ int receiveControlPackage(int type, char *  name, int size){
       exit(-1);
     }
 
-    printf("%c\n",data[0]);
+    printf("Type %x\n",data[0]);
+    printf("T1 %x\n",data[1]);
 
     //printf("%s\n",data);
 
