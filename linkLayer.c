@@ -74,7 +74,7 @@ int llopen_receiver(int fd)
     printf("RECEIVER\n");
     
     //Verificar e receber a trama SET 
-    if((res = receive(fd,"SET")) == -1){
+    if((res = receive(fd,"SET")) == ERROR){
         perror("receive frame");
         exit(-1);
     }else
@@ -149,7 +149,7 @@ int llopen_sender(int fd)
             }
             
             //Verificar e receber a trama UA ---> isto é para mudar (Eu devo receber a trama e no processamento verifica-la)
-            if((res = receive(fd,"UA")) == -1)
+            if((res = receive(fd,"UA")) == ERROR)
             {
                 return 1;
             }
@@ -217,7 +217,7 @@ int llwrite(int fd, char * buffer, int length){
             }
             
             //Verificar e receber a trama RR OU REJ com Nr = 1      (por agora vamos só pensar que recebe o RR
-            if((res = receive(fd,"RR")) == -1)//RR AINDA NÃO ESTÁ IMPLEMENTADO!!
+            if((res = receive(fd,"RR")) == ERROR)//RR AINDA NÃO ESTÁ IMPLEMENTADO!!
             {
                 return -1;
             }
@@ -239,38 +239,46 @@ int llwrite(int fd, char * buffer, int length){
     */
 int llread(int fd, char * buffer){
         
-        //ainda não percebi muito bem o contexto deste buffer ---> será para colocar aqui a mensagem recebida?
-
         int res;
+		char *frame = NULL;
         
         //rececao da trama I (read) com verificacao de erros e desstuffing
-        if((res = receive(fd,"I")) == -1)
+		ReturnType ret = receive(fd,"I");
+        if(ret == ERROR)
         {
-            return -1;
+            return 1;
         }
-        else{
-            printf("Trama I recebida!\n");
+        else if(ret == DATAERROR)
+		{
+         	frame = build_frame_SU("REJ");   
         }
+		else
+		{
+			printf("Trama I recebida!\n");
+			memcpy(&buffer, data_link.frame, data_link.frame_size); //destination, source, num B
+
+                        printf("%s\n",buffer);
+                        
+ 			//criacao da trama RR/REJ (ainda só vamos criar a RR)
+        	frame = build_frame_SU("RR");
+		}	
             
-        //criacao da trama RR/REJ (ainda só vamos criar a RR)
-        char *rr = build_frame_SU("RR");   
-        
         /*printf("llread RR antes do sfuffing\n");
         display(rr,FRAME_SIZE);*/
         
-        int newsize = stuff(&rr,FRAME_SIZE);
+        int newsize = stuff(&frame,FRAME_SIZE);
       
        /* printf("llread RR depois do sfuffing\n");
         display(rr,newsize);*/
         
-        //envia a trama RR
-        if((res = write(fd,rr,newsize)) == -1)    //Envio da Trama I0
+        //envia a trama RR/REJ
+        if((res = write(fd,frame,newsize)) == -1)    //Envio da Trama I0
         {
             perror("write llread");
             exit(-1);
         }
         else
-            printf("Trama RR enviada!\n");
+            printf("Trama RR/REJ enviada!\n");
         
         return 0;
     }
@@ -341,7 +349,7 @@ int llclose_sender(int fd)
             }
             
             //Verificar e receber a trama DISC
-            if((res = receive(fd,"DISC")) == -1)
+            if((res = receive(fd,"DISC")) == ERROR)
             {
                 return -1;
             }
@@ -401,7 +409,7 @@ int llclose_receiver(int fd)
             if(tries==0)
             {
                 //Verificar e receber a trama DISC
-                if((res = receive(fd,"DISC")) == -1)
+                if((res = receive(fd,"DISC")) == ERROR)
                 {
                     return -1;
                 }
@@ -425,7 +433,7 @@ int llclose_receiver(int fd)
                 printf("trama DISC enviada!\n");
                                     
                                     
-                if((res = receive(fd,"UA")) != -1){
+                if((res = receive(fd,"UA")) == OK){
                     free(disc);
                     done =1;
                     printf("trama UA recebida\n");

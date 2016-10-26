@@ -24,6 +24,13 @@ typedef enum {
 	START, FLAG_RCV, A_RCV, C_RCV, BCC_OK, STOP
 } State;
 
+//ERROR - qualquer erro de escrita ou leitura ou que aborte o programa
+//DATA ERROR - erro na interpretacao dos dados da trama I
+//OK - sem erros
+typedef enum {
+	ERROR, DATAERROR, OK
+} ReturnType;
+
 static dataLink data_link;
 
 void init_linkLayer(char *port);
@@ -42,7 +49,7 @@ char* build_frame_SU(char *flag); //tramas do tipo S ou UA
 
 char* build_frame_I(char* data, unsigned int data_length);
 
-int receive(int fd, char* flag);
+ReturnType receive(int fd, char* flag);
 
 char getControlField(char* flag);
 

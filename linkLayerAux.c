@@ -52,9 +52,11 @@ char* build_frame_I(char* data, unsigned int data_length){
 /**
  * Recebe uma trama
  */
-int receive(int fd, char* flag){
+ReturnType receive(int fd, char* flag){
     
    int maxSixe = 30; // este valor ainda não sei se esta correto, mas quando estiver vai faz parte das constantes
+
+   //ReturnType rt = OK;
 
    char* buf = NULL;
    buf = (char *) malloc(maxSixe);
@@ -73,7 +75,7 @@ int receive(int fd, char* flag){
        if (state != STOP) {
            if((read(fd,&c,1)) == -1){
                perror("read receiver");
-               return 1;
+			   return ERROR;
            }
        }
        
@@ -175,23 +177,23 @@ int receive(int fd, char* flag){
   /* printf("Receive depois do desstuffing\n");
    display(buf,newsize); */
    
-   //se e uma trama do tipo I, e necessario analisar despois do stuffing
+   //se e uma trama do tipo I, e necessario analisar depois do stuffing
    if(hasData)
    {
-       int data_length = newsize - FRAME_SIZE - 1; //-1 por causa da proteção dupla	
+       data_link.frame_size = newsize - FRAME_SIZE - 1; //-1 por causa da proteção dupla	
 
        int i;
        char bcc2 = (char)0x0;
-       for(i = 0; i < data_length; i++){
+       for(i = 0; i < data_link.frame_size; i++){
            bcc2 ^= buf[4+i];
        }
        
-       if(bcc2 != buf[4+data_length]){
-           printf("WARNING: erro no bcc2!\n");
-           return 1;
-    }
+       if(bcc2 != buf[4+data_link.frame_size]){
+           return DATAERROR;
+       }
         
-    //nao sei se faltam coisas aqui... tipo colocar a mensagem em algum lado, ou assim.
+	   //colocar a mensagem recebida na struct
+	   memcpy(data_link.frame, &buf[4], data_link.frame_size); //destination, source, num 
        
    }
    
@@ -204,7 +206,7 @@ int receive(int fd, char* flag){
    
    free(buf);   //liberta o espaco em memoria
  
-   return 0;
+   return OK;
     
 }
 
@@ -223,14 +225,22 @@ char getControlField(char* flag)
         return FRAME_C_DISC;
     }
     if(strcmp("RR",flag) == 0){
-        // o nr é sempre o oposto do que recebe
+        // o nr é sempre o oposto do que recebe (TRATAR DISTO DEPOIS)
         int nr = 1;
-        if(data_link.sequenceNumber == 0) nr = 0;
-        
+        if(data_link.sequenceNumber == 0) nr = 0;   
         return (FRAME_C_RR << 7) & nr;
+        //return FRAME_C_RR;
+    }
+    if(strcmp("REJ",flag) == 0){
+        // o nr é sempre o oposto do que recebe (TRATAR DISTO DEPOIS)
+        int nr = 1;
+        if(data_link.sequenceNumber == 0) nr = 0;   
+        return (FRAME_C_RR << 7) & nr;
+        //return FRAME_C_REJ;
     }
     if(strcmp("I",flag) == 0){
         return (FRAME_C_I << 6) & data_link.sequenceNumber; //o controlo depende do sequenceNumber
+		//return FRAME_C_I;
     }
         
     printf("ainda nao esta definida");

@@ -21,6 +21,7 @@
 #define FRAME_C_I (char)0x40    //Campo de controlo para a trama I quando s=1
 #define FRAME_C_DISC (char)0x0B	//campo de controlo para trama DISC
 #define FRAME_C_RR (char)0xA5	//campo de controlo para trama RR
+#define FRAME_C_REJ (char)0xA1	//campo de controlo para trama REJ
 
 #define	FILE_SIZE	0
 #define FILE_NAME	1
