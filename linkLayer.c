@@ -216,8 +216,9 @@ int llwrite(int fd, char * buffer, int length){
 			printf("Trama I enviada!\n");
 		}
 		
-		//Verificar e receber a trama RR OU REJ com Nr = 1      (por agora vamos só pensar que recebe o RR
+		//Verificar e receber a trama RR OU REJ com Nr = 1
 		ReturnType ret = receive(fd,RR_REJ);
+                
 		if(ret == REJ)
 		{
 			printf("Temos de enviar outra vez continuar\n");
@@ -234,7 +235,7 @@ int llwrite(int fd, char * buffer, int length){
 		}	
 	}
 
-return n_written;
+    return n_written;
 }
 
 /*
@@ -260,8 +261,8 @@ int llread(int fd, char * buffer){
 	else
 	{
 		printf("Trama I recebida!\n");
-		memcpy(buffer, data_link.frame, data_link.frame_size); //destination, source, num B
-					
+		memcpy(buffer, &data_link.frame,data_link.frame_size);//destination, source, num B
+		
 		//criacao da trama RR/REJ (ainda só vamos criar a RR)
 		frame = build_frame_SU(RR);
 	}
@@ -271,7 +272,7 @@ int llread(int fd, char * buffer){
 	
 	int newsize = stuff(&frame,FRAME_SIZE);
   
-   /* printf("llread RR depois do sfuffing\n");
+        /* printf("llread RR depois do sfuffing\n");
 	display(rr,newsize);*/
 	
 	//envia a trama RR/REJ
