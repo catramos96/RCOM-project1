@@ -9,33 +9,60 @@
 #include <signal.h>
 #include "constants.h"
 
+/**
+ * Estrutura de informação de uma trama
+ */
 typedef struct
-{	
-    char port[20]; 	/*Dispositivo /dev/ttySx, x = 0, 1*/
-    int baudRate; 	/*Velocidade de transmissão*/
-    unsigned int sequenceNumber;	/*Número de sequência da trama: 0, 1*/
-    unsigned int timeout;  	/*Valor do temporizador: 1 s*/
-    unsigned int numTransmissions; 	/*Número de tentativas em caso de falha*/
-    char frame[BUF_SIZE];	/*Trama*/
-    unsigned int frame_size;
+{
+    char port[20];        /*Dispositivo /dev/ttySx, x = 0, 1*/
+    int baudRate;       /*Velocidade de transmissão*/
+    unsigned int sequenceNumber;    /*Número de sequência da trama: 0, 1*/
+    unsigned int timeout;  /*Valor do temporizador: 1 s*/
+    unsigned int numTransmissions;  /*Número de tentativas em caso de falha*/
 }dataLink;
 
+/**
+ * Estrutura de dados que guarda os tipos de Control Field
+ */
+typedef enum {
+    DISC, UA, SET, I, RR, REJ
+} ControlFieldType;
+
+/**
+ * Estrutura de dados que guarda as informacoes recebidas da trama.
+ * Guarda o tipo (Control Field);
+ * Guarda o conteudo dos dados de uma mensagem e o respetivo tamanho (caso seja do tipo I);
+ * Guarda o erro da analise (ou OK se não houver erros)
+ */
+typedef struct
+{
+    ControlFieldType type;
+    char isCommand; //ainda nao sei se devo colocar
+    char message[BUF_SIZE];        
+    unsigned int message_size;      
+} Message;
+
+/**
+ * Estrutura de informação que guarda os estados da leitura
+ */
 typedef enum {
     START, FLAG_RCV, A_RCV, C_RCV, BCC_OK, STOP
 } State;
 
-//ERROR - qualquer erro de escrita ou leitura ou que aborte o programa
-//DATA ERROR - erro na interpretacao dos dados da trama I
-//OK - sem erros
+/**
+ * Estrutura de dados que guarda o tipo de erros
+ * 
+ * ERROR - qualquer erro de escrita ou leitura ou que aborte o programa
+ * DATA ERROR - erro na interpretacao dos dados da trama I
+ * OK - sem erros
+ */
 typedef enum {
-    ERROR, DATAERROR, OK, MISTAKENTYPE, IS_RR, IS_REJ
+    ERROR, DATAERROR, OK
 } ReturnType;
 
-typedef enum {
-    DISC, UA, SET, I, RR, REJ, RR_REJ
-} ReceiveType;
-
 static dataLink data_link;
+
+//METODOS
 
 void init_linkLayer(char *port);
 
@@ -49,20 +76,22 @@ int llwrite(int fd, char * buffer, int length);
 
 int llread(int fd, char * buffer);
 
-char* build_frame_SU(ReceiveType flag); //tramas do tipo S ou UA
-
-char* build_frame_I(char* data, unsigned int data_length);
-
-ReturnType receive(int fd, ReceiveType flag);
-
-char getControlField(ReceiveType flag);
-
-int stuff(char **frame, int frame_length);
-
-int desstuff(char **frame, int frame_length);
-
 int llclose(int fd, int isReceiver);
 
 int llclose_receiver(int fd);
 
 int llclose_sender(int fd);
+
+char* build_frame_SU(ControlFieldType flag); //tramas do tipo S ou UA
+
+char* build_frame_I(char* data, unsigned int data_length);
+
+ReturnType receive(int fd, Message *msg);
+
+unsigned char getControlField(ControlFieldType flag);
+
+ControlFieldType setControlField(char flag);
+
+int stuff(char **frame, int frame_length);
+
+int desstuff(char **frame, int frame_length);

@@ -5,7 +5,7 @@
 /**
  * Cria uma trama do tipo S ou U
  */
-char* build_frame_SU(ReceiveType flag)      
+char* build_frame_SU(ControlFieldType flag)      
 {
     char *frame = NULL;
     frame = (char *) malloc(FRAME_SIZE);
@@ -34,7 +34,7 @@ char* build_frame_I(char* data, unsigned int data_length){
     
     frame[0] = FLAG;    
     frame[1] = FRAME_A;
-    frame[2] = (FRAME_C_I << 6) & data_link.sequenceNumber; //s=0
+    frame[2] = data_link.sequenceNumber << 6;
     frame[3] = (frame[1] ^ frame[2]);
     
     //data
@@ -52,34 +52,32 @@ char* build_frame_I(char* data, unsigned int data_length){
 /**
  * Recebe uma trama
  */
-ReturnType receive(int fd, ReceiveType flag){
-    
-   //int maxSixe = 30; // este valor ainda não sei se esta correto, mas quando estiver vai faz parte das constantes
+ReturnType receive(int fd, Message *msg){
 
-   //ReturnType rt = OK;
-
-   char* buf = (char *) malloc(MAX_PKG_SIZE); //ALTERAR - O REALLOC NÃO FUNCIONA SE ULTRAPASSAR ESTE VALOR
+   char* buf = (char *) malloc(BUF_SIZE);
    
    State state = START;
    int size = 0;
    int done = 0;
    int hasData = 1; //flag que indica se é uma trama do tipo I
-   char bcc;
-   char controlField;
+   unsigned char bcc;
 
    while (!done) 
    {   
        unsigned char c;
        
-       if (state != STOP) {
-           if((read(fd,&c,1)) == -1){
+       //le ate chegar ao estado de STOP
+       if (state != STOP) 
+       {
+           if((read(fd,&c,1)) == -1)
+           {
                perror("read receiver");
-                return ERROR;
+               return ERROR;
            }
        }
        
        switch (state) {
-           case START:
+           case START:  //So muda de estado quando aparecer uma flag
                if (c == FLAG) 
                {
                    buf[size] = c;
@@ -87,8 +85,8 @@ ReturnType receive(int fd, ReceiveType flag){
                    state = FLAG_RCV;
                }
                break;
-           case FLAG_RCV:
-               if(c == FRAME_A)       //nao esta bem!!!!!!!!!!!!!!!!!!!!!! temos de ter em conta se é 0x03 ou 0x01 (ainda so funciona para 0x03)
+           case FLAG_RCV:   //muda de estado se receber um campo de endereco, ou algo diferente da flag
+               if(c == FRAME_A)       //nao esta bem!!!!!!!! temos de ter em conta se é 0x03 ou 0x01 (ainda so funciona para 0x03)
                {
                    buf[size] = c;
                    size++;
@@ -96,51 +94,47 @@ ReturnType receive(int fd, ReceiveType flag){
                }
                else if(c != FLAG)
                {
-                    size =1;
+                    size = 1;
                     state = START;
                }
                break;
-           case A_RCV:
-               if(c != FLAG)
-               {
-                   buf[size] = c;
-                   size++;
-                   controlField = c;
-                   state = C_RCV;
-               }
-               else if(c == FLAG)
-               {
-                   size = 1;
-                   state = FLAG_RCV;
-               }
-               /*else
-               {
-                   size = 0;
-                   state = START;
-               }*/
-               break;
-           case C_RCV:
-               
-               bcc = buf[1] ^ buf[2];
-               
-               if(c == bcc)
-               {
-                   buf[size] = c;
-                   size++;
-                   state = BCC_OK;
-               }
-               else if(c == FLAG)
+           case A_RCV:      //muda sempre de estado, se flag => start, se não guarda o controlField para comparar no futuro
+               if(c == FLAG)
                {
                    size = 1;
                    state = FLAG_RCV;
                }
                else
                {
-                   size = 0;
-                   state = START;
+                   buf[size] = c;
+                   size++;
+                   state = C_RCV;
                }
                break;
-           case BCC_OK:
+           case C_RCV:  //primeiro campo de segurança
+               if(c == FLAG)
+               {
+                   size = 1;
+                   state = FLAG_RCV;
+               }
+               else
+               {
+                   bcc = buf[1] ^ buf[2] & 0xff; //fica com os 2 utimos bits
+                        
+                   if(c == bcc)
+                   {
+                        buf[size] = c;
+                        size++;
+                        state = BCC_OK;
+                   }
+                   else
+                   {
+                        size = 0;
+                        state = START;
+                   }
+               }
+               break;
+           case BCC_OK: // Se receber uma flag acaba, se não, recebemos todos os caracteres para serem depois analisados.
                if(c == FLAG)    
                {
                    if(size == FRAME_SIZE-1) //trama do tipo S ou UA
@@ -165,111 +159,115 @@ ReturnType receive(int fd, ReceiveType flag){
        }
        
    }
-   
-   printf("ANtes realloc\n");
-   /* VAI CRASHAR --------------------------------------*/
+
    buf = (char*)realloc(buf,size);  //realloc para o tamanho certo da trama
-    printf("Depois realloc\n");
+
    /*printf("Receive antes do desstuffing\n");
    display(buf,size);*/
   
    int newsize = desstuff(&buf,size);   //recebe com stuff, fazemos desstuffing
    
-  /* printf("Receive depois do desstuffing\n");
+   /*printf("Receive depois do desstuffing\n");
    display(buf,newsize); */
-   
+  
+  //---- Comeca a parte de analise da trama ----//
+  
    //trama do tipo I
    if(hasData)
    {
-       //verificar que é do tipo I
-       if(controlField != getControlField(flag))
-           return MISTAKENTYPE;
+        msg->type = setControlField(buf[2]);    //recebe o controlField antes de mudar o sequenceNumber
+       
+       //analisar o sequence number => se recebe igual ao que está guardado e porque ocorreu uma retransmissao
+       unsigned int ns = buf[2] >> 6;
+       if(ns == data_link.sequenceNumber){
+           printf("WARNING: ocorreu uma retransmissao\n");
+       }
+       data_link.sequenceNumber = ns;
         
-       data_link.frame_size = newsize - FRAME_SIZE - 1; //-1 por causa da proteção dupla	
+       msg->message_size = newsize - FRAME_SIZE - 1; //-1 por causa da proteção dupla	
 
        int i;
        char bcc2 = (char)0x0;
-       for(i = 0; i < data_link.frame_size; i++){
+       for(i = 0; i < msg->message_size; i++){
            bcc2 ^= buf[4+i];
        }
        
-       if(bcc2 != buf[4+data_link.frame_size]){
+       if(bcc2 != buf[4+msg->message_size]){
            return DATAERROR;
        }
         
         //colocar a mensagem recebida na struct
-        memcpy(data_link.frame, &buf[4], data_link.frame_size); //destination, source, num 
-       
+        memcpy(msg->message, &buf[4], msg->message_size); //destination, source, num 
    }
-   else
-   {
-       //e necessario verificar se o tipo recebido e igual ao lido
-       if(flag == RR_REJ){
-           char rr = getControlField(RR);
-           char rej = getControlField(REJ);
-           
-           if(rr == buf[2]){
-               data_link.sequenceNumber = (rr >> 7) & 0;
-               return IS_RR;
-           }
-           else if(rej == buf[2]){
-               data_link.sequenceNumber = (rej >> 7) & 0;
-               return IS_REJ;
-           }
-           else
-               return MISTAKENTYPE;
-           
-       }
-       else
-       {
-           if(controlField != getControlField(flag))
-               return MISTAKENTYPE;
-       }
+   else{
+         //caso tenha recebido RR ou REJ, é necessário mudar o sequenceNumber para o N(r)
+         msg->type = setControlField(buf[2]);
+         if(msg->type == RR || msg->type == REJ)
+         {
+            int nr = buf[2] >> 7;
+            data_link.sequenceNumber = nr;
+         }
    }
-   
-   //se recebemos uma trama do tipo RR significa que o N(s) a proxima trama do tipo I vai depender deste N(r)//
    
    free(buf);   //liberta o espaco em memoria
  
-   return OK;
-    
+   return OK;   
 }
 
 /**
  * 
  */
-char getControlField(ReceiveType flag)
-{
+unsigned char getControlField(ControlFieldType flag)
+{    
     if(SET == flag){
         return FRAME_C_SET;
     }
-    if(UA == flag){
+    else if(UA == flag){
         return FRAME_C_UA;
     }
-    if(DISC == flag){
+    else if(DISC == flag){
         return FRAME_C_DISC;
     }
-    if(RR == flag){
-        // o nr é sempre o oposto do que recebe (TRATAR DISTO DEPOIS)
-        int nr = 1;
-        if(data_link.sequenceNumber == 0) nr = 0;   
-        return (FRAME_C_RR << 7) & nr;
-        //return FRAME_C_RR;
+    else if(RR == flag){  // o nr é sempre o oposto do que recebe 
+        unsigned char nr = 1;
+        if(data_link.sequenceNumber == 1) nr = 0;   
+        return (FRAME_C_RR | (nr << 7));
     }
-    if(REJ == flag){
-        // o nr é sempre o oposto do que recebe (TRATAR DISTO DEPOIS)
-        int nr = 1;
-        if(data_link.sequenceNumber == 0) nr = 0;   
-        return (FRAME_C_RR << 7) & nr;
-        //return FRAME_C_REJ;
+    else if(REJ == flag){   //igual para o REJ
+        unsigned char nr = 1;
+        if(data_link.sequenceNumber == 1) nr = 0;   
+        return FRAME_C_REJ | (nr << 7);
     }
-    if(I == flag){
-        return (FRAME_C_I << 6) & data_link.sequenceNumber; //o controlo depende do sequenceNumber
-		//return FRAME_C_I;
+    else if(I == flag){
+        return data_link.sequenceNumber << 6; //o controlo depende do sequenceNumber
     }
-        
-    printf("ainda nao esta definida");
+    else
+        printf("ainda nao esta definida\n");
     
+}
+
+ControlFieldType setControlField(char c){
+    
+    if(FRAME_C_SET == c){
+        return SET;
+    }
+    else if(FRAME_C_UA == c){
+        return UA;
+    }
+    else if(FRAME_C_DISC == c){
+        return DISC;
+    }
+    else if(FRAME_C_RR == c || (FRAME_C_RR | (char)0x80) == c){
+        return RR;
+    }
+    else if(FRAME_C_REJ == c || (FRAME_C_REJ | (char)0x80) == c){
+        return REJ;
+    }
+    else if(data_link.sequenceNumber << 6 == c ){
+        return I;
+    }
+    else
+        printf("%c - ainda nao esta definida\n",c);
 }
 
 /**
