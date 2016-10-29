@@ -39,11 +39,13 @@ int getFileSize(int file_descriptor);
 
 int sendControlPackage(char control, char * filename, char * filesize, char * date, char * permissions);
 
-int sendDataPackage(char *data, int sequenceN, unsigned int size);
+int sendDataPackage(char *data, unsigned int size);
 
-int receiveControlPackage(struct package *p);
+int receiveControlPackage(struct package *p,char * data);
 
-int receiveDataPackage(int type, int size, char * data);
+int receiveDataPackage(struct package *p, char * data);
+
+int receivePackage(struct package *p);
 
 int sender();
 

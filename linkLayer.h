@@ -38,7 +38,7 @@ typedef struct
 {
     ControlFieldType type;
     char isCommand; //ainda nao sei se devo colocar
-    char message[BUF_SIZE];        
+    unsigned char message[BUF_SIZE];        
     unsigned int message_size;      
 } Message;
 
@@ -64,17 +64,17 @@ static dataLink data_link;
 
 //METODOS
 
-void init_linkLayer(char *port);
+void init_linkLayer(unsigned char *port);
 
-int llopen(char *port, int isReceiver);
+int llopen(unsigned char *port, int isReceiver);
 
 int llopen_sender(int fd);
 
 int llopen_receiver(int fd);
 
-int llwrite(int fd, char * buffer, int length);
+int llwrite(int fd, unsigned char * buffer, int length);
 
-int llread(int fd, char * buffer);
+int llread(int fd, unsigned char * buffer);
 
 int llclose(int fd, int isReceiver);
 
@@ -82,16 +82,16 @@ int llclose_receiver(int fd);
 
 int llclose_sender(int fd);
 
-char* build_frame_SU(ControlFieldType flag); //tramas do tipo S ou UA
+unsigned char* build_frame_SU(ControlFieldType flag); //tramas do tipo S ou UA
 
-char* build_frame_I(char* data, unsigned int data_length);
+unsigned char* build_frame_I(unsigned char* data, unsigned int data_length);
 
 ReturnType receive(int fd, Message *msg);
 
-unsigned char getControlField(ControlFieldType flag);
+char getControlField(ControlFieldType flag);
 
 ControlFieldType setControlField(char flag);
 
-int stuff(char **frame, int frame_length);
+int stuff(unsigned char **frame, int frame_length);
 
-int desstuff(char **frame, int frame_length);
+int desstuff(unsigned char **frame, int frame_length);

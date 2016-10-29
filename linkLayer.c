@@ -5,7 +5,7 @@ int alarmOff = 1;
 /**
 * Inicializacao do layerLink
 */
-void init_linkLayer(char* port){
+void init_linkLayer(unsigned char* port){
 
     strcpy(data_link.port, port);
     data_link.baudRate = BAUDRATE;
@@ -23,7 +23,7 @@ void handler(){
 * @param flag TRANSMITTER / RECEIVER
 * @return identificador da ligação de dados ; valor negativo em caso de erro
 */
-int llopen(char* port, int isReceiver)
+int llopen(unsigned char* port, int isReceiver)
 {
 	int fd,c,res;
 	struct termios newtio, oldtio;
@@ -96,7 +96,7 @@ int llopen_receiver(int fd)
         free(msg);  //liberta a mensagem
 
 	//criacao da trama UA
-	char *ua = build_frame_SU(UA);
+	unsigned char *ua = build_frame_SU(UA);
 
 	/*printf("llopen_receiver UA antes do stuffing\n");
 	display(ua, FRAME_SIZE);*/
@@ -126,7 +126,7 @@ int llopen_sender(int fd)
     printf("SENDER\n");
 
     //criacao da trama SET
-    char *set = build_frame_SU(SET);
+    unsigned char *set = build_frame_SU(SET);
 	
     /*printf("llopen_sender SET antes do sfuffing\n");
     display(set, FRAME_SIZE);*/
@@ -193,7 +193,7 @@ int llopen_sender(int fd)
 * @param length  comprimento do array de caracteres 
 * @return número de caracteres escritos ; valor negativo em caso de erro
 */
-int llwrite(int fd, char * buffer, int length){
+int llwrite(int fd, unsigned char * buffer, int length){
 	
     (void) signal(SIGALRM, handler);  // instala  rotina que atende interrupcao
     int tries = 0;
@@ -202,7 +202,7 @@ int llwrite(int fd, char * buffer, int length){
     int res;
 
     //criacao da trama I
-    char *frame_i = build_frame_I(buffer,length);  
+    unsigned char *frame_i = build_frame_I(buffer,length);  
     int size = length+FRAME_SIZE+1;
 	
     /* printf("llwrite I antes do sfuffing\n");
@@ -251,7 +251,7 @@ int llwrite(int fd, char * buffer, int length){
                 free(frame_i);
                 printf("Trama RR recebida!\n");
             }
-            else if(ret == REJ)
+            else if(msg->type == REJ)
             {
                 printf("Trama REJ recebida\n");
                 alarmOff = 1;
@@ -269,22 +269,27 @@ int llwrite(int fd, char * buffer, int length){
 * @param buffer array de caracteres recebidos 
 * @return comprimento do array (número de caracteres lidos) ; valor negativo em caso de erro
 */
-int llread(int fd, char * buffer){
+int llread(int fd, unsigned char * buffer){
 
     int res;
-    char *frame = NULL;
+    unsigned char *frame = NULL;
     
     //rececao da trama I (read) com verificacao de erros e desstuffing
     Message* msg = (Message*)malloc(sizeof(Message));
     ReturnType ret = receive(fd,msg);
-    
-    if(ret == ERROR)    
+
+    if(ret == ERROR){
+        printf("ERROR !\n");
         return 1;
-    else if(ret == DATAERROR)
+    }     
+    else if(ret == DATAERROR){
         frame = build_frame_SU(REJ);   // constroi a trama REJ se erros nos dados
+        printf("DATA ERROR !\n");
+    }
     else
     {
         memcpy(buffer, &msg->message,msg->message_size);//destination, source, num B
+        int i = 0;
         frame = build_frame_SU(RR);  //criacao da trama RR
         printf("Trama I recebida!\n");  //caso de sucesso
     }
@@ -336,9 +341,6 @@ int llclose(int fd, int isReceiver)
 	close(fd);
 	return ret;//retorna 0 se correr sem problemas
 }
-
-
-
 int llclose_sender(int fd)
 {
     (void) signal(SIGALRM, handler);  // instala  rotina que atende interrupcao
@@ -346,7 +348,7 @@ int llclose_sender(int fd)
     
     Message* msg = (Message*)malloc(sizeof(Message));
 	
-    char* disc = build_frame_SU(DISC);
+    unsigned char* disc = build_frame_SU(DISC);
 	
    /* printf("llclose_sender DISC antes do sfuffing\n");
     display(disc, FRAME_SIZE);*/
@@ -396,7 +398,7 @@ int llclose_sender(int fd)
     
     free(msg);
         
-    char* ua = build_frame_SU(UA);
+    unsigned char* ua = build_frame_SU(UA);
 	
     /*printf("llclose_sender UA antes do sfuffing\n");
     display(ua, FRAME_SIZE);*/
@@ -416,8 +418,6 @@ int llclose_sender(int fd)
         return 0;
     }
 }
-	
-
 int llclose_receiver(int fd)
 {
     (void) signal(SIGALRM, handler);  // instala  rotina que atende interrupcao
@@ -426,7 +426,7 @@ int llclose_receiver(int fd)
     
     Message* msg = (Message*)malloc(sizeof(Message));
 	
-    char* disc = build_frame_SU(DISC);
+    unsigned char* disc = build_frame_SU(DISC);
 	
     /*printf("llclose_receiver DISC antes do sfuffing\n");
     display(disc, FRAME_SIZE);*/

@@ -30,14 +30,16 @@ int getFileSize(int file_descriptor){
 
 int sendControlPackage(char control,char * file_name, char * file_size, char * file_date, char * file_perm)
 {
-    int buffer_size = 9 + strlen(file_size) + strlen(file_name) + strlen(file_date) + strlen(file_perm);
+  int buffer_size = 9 + strlen(file_size) + strlen(file_name) + strlen(file_date) + strlen(file_perm);
 
     char *pkg = malloc(buffer_size);
+    memset(pkg,0,buffer_size);
+
     int i = 0;
 
     pkg[i] = control;
 
-    /*printf("Type - %x\n",pkg[0]);*/               //DEBUG
+    printf("Type - %x\n",pkg[0]);               //DEBUG
 
     i++;
 
@@ -79,56 +81,48 @@ int sendControlPackage(char control,char * file_name, char * file_size, char * f
     printf("PermL - %x\n",pkg[i+1]);
     printf("PermV - %s\n",pkg + i + 2);
 
-    printf("Pacote %s\n LENGTH %d\n\n",pkg,buffer_size);
+    /*printf("Pacote %s\n LENGTH %d\n\n",pkg,buffer_size);*/
 
       if(llwrite(infoLayer.fileDescriptor,pkg,buffer_size) == -1){
         perror("Could not send control PACKAGE");
-        exit(-1);
+        return -1;
       }
       free(pkg);
   return 0;
 }
 
-int sendDataPackage(char * data, int sequenceN,unsigned int size)
+int sendDataPackage(char * data,unsigned int size)
 {
-	int buffer_size = 4 + size;
-  char pkg[buffer_size];
+  int buffer_size = 4 + size;
+  char *pkg = malloc(buffer_size);
 
   pkg[0] = PKG_DATA;
-  pkg[1] = sequenceN;
+  pkg[1] = sequenceNumber;
   pkg[2] = size/DATA_SIZE;                  //L2
-  pkg[3] = size-size/DATA_SIZE;             //L1    SizeT = L2*DataSize + L1
+  pkg[3] = size-DATA_SIZE*pkg[2];             //L1    SizeT = L2*DataSize + L1
   memcpy(pkg + 4,data,size);
 
-  /*printf("Type - %x\n",pkg[0]);         //DEBUG
+  printf("Type - %x\n",pkg[0]);         //DEBUG
   printf("Number - %x\n",pkg[1]);
-  printf("L2 - %x\n",pkg[2]);
-  printf("L1 - %x\n",pkg[3]);
-  printf("Total Size - %x\n",size);
-  printf("DATA - \n%x\n",pkg + 4);*/
- 
-  /*if(llwrite(infoLayer.fileDescriptor,pkg,buffer_size) == -1){
-     perror("Could not send DATA PACKAGE");
-     exit(-1);
-  }*/
+  printf("Total Size - %d\n",pkg[2]*DATA_SIZE + pkg[3]);
+  printf("SIZE - %d\n",size);
+  printf("DATA - \n%s\n\n",pkg+4);
+
   
+  printf("Data:\n%s\n\n",data);
+
+  if(llwrite(infoLayer.fileDescriptor,pkg,buffer_size) == -1){
+     perror("Could not send DATA PACKAGE");
+     return -1;
+  }
+  free(pkg);
   return 0;
 }
 
-int receiveControlPackage(struct package *p){
+int receiveControlPackage(struct package *p,char * data){
 
-	 char data[MAX_PKG_SIZE];
-   int n_bytes = 0, i = 0;
+   int n_bytes = 0, i = 1;
    char tmp[36];
-
-  	if(llread(infoLayer.fileDescriptor,data) == -1){
-      perror("Could not read");
-      return -1;
-    }
-
-    p->type = data[i++];
-
-    if(p->type == PKG_START || p->type == PKG_END){
 
       if(data[i++] != FILE_SIZE){
         perror("Package don't respect order");
@@ -174,19 +168,63 @@ int receiveControlPackage(struct package *p){
       printf("Date - %d\n",p->file_date);
       printf("Perm - %d\n",p->file_perm);*/
 
+    return 0;
+}
 
+int receiveDataPackage(struct package *p, char * data){
+   int n_bytes = 0, i = 1;
+   int n2 = 0,n1 = 0;
+
+      p->number = data[i++];
+
+      n2 = data[i++]*DATA_SIZE;
+      n1 = data[i++];
+
+      p->size = n2+n1;
+   
+      memset(p->data,0,DATA_SIZE);    //preciso ???
+      memcpy(p->data,data + i,p->size);
+    
+
+      printf("Type - %d\n", p->type);             //DEBUG
+      printf("SNumber - %d\n",p->number);
+      printf("Size - %d\n",p->size);
+      printf("Data:\n%s\n",p->data);
+
+  return 0;
+}
+
+int receivePackage(struct package *p){
+  char* data = malloc(MAX_PKG_SIZE);
+  memset(data,0,MAX_PKG_SIZE);
+
+  if(llread(infoLayer.fileDescriptor,data) == -1){
+      perror("Could not read");
+      return -1;
+    }
+
+    p->type = data[0];
+    printf("Type - %d\n",data[0]);
+
+    if(p->type == PKG_START || p->type == PKG_END){
+      if(receiveControlPackage(p,data) == -1){
+        perror("Could not receive CONTROL package");
+        return -1;
+      }
+    }
+    else if(p->type == PKG_DATA){
+        if(receiveDataPackage(p,data) == -1){
+          perror("Could not receive DATA package");
+          return -1;
+        }
     }
     else{
       perror("Type of package received unknown");
       return -1;
     }
 
+    free(data);
     return 0;
-}
-
-int receiveDataPackage(int type, int size, char * data){
-
-  return 0;
 }
 
 int sender(){
@@ -218,6 +256,7 @@ int sender(){
       char file_size[16], file_date[16], file_perm[16];
       
       sprintf(file_size,"%d",getFileSize(file));
+      printf("%s\n",file_size);
       sprintf(file_date,"%lu",st.st_mtime);
       sprintf(file_perm,"%u",st.st_mode);
 
@@ -227,44 +266,39 @@ int sender(){
         exit(-1);
       }
 
-     
-      /*int STOP = 0, r = 0;
-      sequenceNumber = 1;
+      int STOP = 0, r = 0;
+      int written = 0;
+      
+      char *data = (char*) malloc(DATA_SIZE);
+     /* while(r = read(file,data,DATA_SIZE)){
 
-      while(!STOP){
+        memset(data,0,DATA_SIZE);
 
-        char *data = (char*) malloc(sizeof(char)*DATA_SIZE + 1);
-        memset(data,'\0',sizeof(char)*DATA_SIZE + 1);             //clear alocated memmory
-
-        if((r = read(file,data,DATA_SIZE)) == -1){
+        if(r == -1){
           perror("Could not read file");
           exit(-1);
         }
-        else if(r < DATA_SIZE){
-          STOP = 1;
+
+        if(sendDataPackage(data,r) == -1){   //size bem ???
+          perror("Could not send DATA package");
+          exit(-1);
         }
-
-        sendDataPackage(fd,data,sequenceNumber,r);
-
-        free(data);      
         sequenceNumber++;
+       
+        written+=r;
       }*/
+      free(data); 
 
-     /* printf("A preparar END\n");
+     printf("A preparar END\n");
 
       //creates and sends package END
-      if(sendControlPackage(PKG_END,fd,file_name,file_size,file_date,file_perm) == -1){
-        perror("Could not send End Package");
+      if(sendControlPackage(PKG_END,file_name,file_size,file_date,file_perm) == -1){
+        perror("Could not send Start Package");
         exit(-1);
       }
 
-      printf("END enviado!\n");
-
-      if(llclose(fd,0) == -1){
-          perror("Could not close port on sender");
-          exit(-1);
-      }
-      */
+      //ver se a data lida é igual ao tamanho do ficheiro
+      
     return 0;
 }
 
@@ -272,116 +306,87 @@ int receiver(){
 	
   int file;
 
-  struct package *p = malloc(sizeof(struct package));
+  struct package pkg;
 
-
-
-  if(receiveControlPackage(p)){
+  if(receivePackage(&pkg)){
     perror("Error at receiving the START package");
     exit(-1);
-  }
-
-  //printf("%d\n",type);
-  
-
-  //Checks if the package is the START
-  /*if(pkg->type != PKG_START){
-    perror("First package received was not the START package");
-    exit(-1);
-  }
+  } 
 
   //create the file with the same permissions
-  char path[128];
-  sprintf(path,"%s/%s",filepath,pkg->name);
-
-  if((file = open(path,O_APPEND | O_CREAT | O_WRONLY,pkg->perm)) == -1){
+  /*har path[128];
+  sprintf(path,"%s/%s",infoLayer.file_path,pkg->file_name);
+//pkg->file_perm
+  if((file = open(path,O_APPEND | O_CREAT | O_WRONLY,S_IRWXU | S_IRWXG | S_IRWXO)) == -1){  //FALTAM FLAGS
     perror("Could not create the file in the receiver");
     exit(-1);
   }
 
   //set the last time modification
-  struct utimbuf new_times;
+  struct utimbuf new_times;       
   struct stat st;
 
   stat(path, &st);
-  */
-    /*new_times.actime = st.st_atime;  
-    new_times.modtime = pkg->date;    
-    utime(pkg->name, &new_times);
 
-    int type = PKG_DATA;
+    new_times.actime = st.st_atime;  
+    new_times.modtime = pkg->file_date;    
+    utime(path, &new_times);*/
+
+    //ver mais tarde
+    /*printf("Permissions - %lu - %d\n",st.st_mode,pkg->file_perm);   //DEBUG
+    printf("Date - %lu - %d\n",st.st_mtime,pkg->file_date);*/
+
+    /*int type = 0;
     int written = 0;        //written per package
-    int data_sent = 0;    //written in the final
-    int last_seq_number = -1;*/
-
-    //DEBUG
-    /*char d2[MAX_PKG_SIZE+1];
-    sprintf(d2,"%c%c%c%c%s",(char)PKG_DATA,
-                  (char) 0, //Sequence Number
-                  (char) 0, //N2 = SIZE_DATA * N2
-                  (char) 19, //N1 SIZE = N2*SIZE_DATA+N1
-                  "ola isto e um teste");*/
+    int data_received = 0;    //written in the final
 
       //PACKAGES DATA
-      /*while(type == PKG_DATA){
-
+    struct package *p = malloc(sizeof(struct package));*/
+    /* while(data_received < pkg->size){
+        
         written = 0;
 
-        if(llread(fd,data) == -1){
-          perror("Could not process START package");
+        if(receivePackage(p) == -1){
+          perror("Could not receive DATA package");
           exit(-1);
         }
 
-        //analizePackage(d2,pkg); //DEBUG
+        if(p->type == PKG_END){
+          break;
+        }
+        else if(p->type != PKG_DATA){
+          close(file);
+          break;
+        }
 
-        analizePackage(data,pkg);
-
-        if(last_seq_number+1 != pkg->number){
-          perror("Packages data with sequence number not ordenated");
+        if(p->number != sequenceNumber){
+          perror("Wrong order of the DATA packages received");
           exit(-1);
         }
 
-        last_seq_number++;  //to keep the order
-        type = pkg->type;
+        sequenceNumber++;
 
         //Write data on the created file
-        do{       //PRECISO CICLO ?
-          if((written += write(file , pkg->data+written , pkg->size)) == -1){
+        do{      
+          if((written += write(file , p->data+written , p->size)) == -1){
             perror("Could not write in the created file of receiver");
             exit(-1);
           }
-        }while(written != pkg->size);
+        }while(written != p->size);
 
-        data_sent += written;     //confirmar com package end
+        data_received += written;     //confirmar com package end
+        memset(p,0,sizeof(struct package));
       };*/
-
-     
-      //PACKAGE END
-      /*if(llread(fd,data) == -1){
-          perror("Could not process START package");
-          exit(-1);
-        }
-
-      analizePackage(data,pkg);
-
-      //Checks if the package is the END
-      if(pkg->type != PKG_END){
-          perror("Last package recieved was not an END package");
-          exit(-1);
-      }
+      //free(p);
 
       //Checks if the data received has the sama size of the original file
-      if(pkg->size != data_sent){
-        perror("The size of the file and the data sent dont mach");
-        exit(-1);
-      }
 
-      if(llclose(fd,1) == -1){
-          perror("Could not close port on sender");
+      if(receivePackage(&pkg) == -1){
+          perror("Could not receive DATA package");
           exit(-1);
-      }
-  */
-      //close(file);
+        }
+        
+      close(file);
 	return 0;
 }
 
@@ -397,14 +402,10 @@ int initApplicationLayer(char *port,int status, char * file_path){
     exit(-1);
   }
 
-  printf("Status - %d\nFilePath - %s\n",infoLayer.status, infoLayer.file_path);
-
   if(status == TRANSMITTER){
-    printf("TRANSMITTER\n");
     sender();
   }
   else if(status == RECEIVER){
-    printf("RECEIVER\n");
     receiver();
   }
   else{
@@ -412,7 +413,10 @@ int initApplicationLayer(char *port,int status, char * file_path){
     exit(-1);
   }
 
-  close(infoLayer.fileDescriptor);
+  if(llclose(infoLayer.fileDescriptor,infoLayer.status) == -1){
+    perror("Could not close port");
+    exit(-1);
+  }
 
   return 0;
 }

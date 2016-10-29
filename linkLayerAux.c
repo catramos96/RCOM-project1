@@ -5,10 +5,10 @@
 /**
  * Cria uma trama do tipo S ou U
  */
-char* build_frame_SU(ControlFieldType flag)      
+unsigned char* build_frame_SU(ControlFieldType flag)      
 {
-    char *frame = NULL;
-    frame = (char *) malloc(FRAME_SIZE);
+    unsigned char *frame = NULL;
+    frame = (unsigned char *) malloc(FRAME_SIZE);
  
     frame[0] = FLAG;    
     frame[1] = FRAME_A;
@@ -26,15 +26,15 @@ char* build_frame_SU(ControlFieldType flag)
  * @param s NS of Frame I
  * @return FrameI : |F|A|C|BCC1|DATA|BCC2|F|
  */
-char* build_frame_I(char* data, unsigned int data_length){
+unsigned char* build_frame_I(unsigned char* data, unsigned int data_length){
 
-    char *frame = NULL;
+    unsigned char *frame = NULL;
     int total = FRAME_SIZE + data_length+1 ; //frame size, with data length and an extra byte for BCC2
-    frame = (char *) malloc(total);
+    frame = (unsigned char *) malloc(total);
     
     frame[0] = FLAG;    
     frame[1] = FRAME_A;
-    frame[2] = data_link.sequenceNumber << 6;
+    frame[2] = (data_link.sequenceNumber << 6);
     frame[3] = (frame[1] ^ frame[2]);
     
     //data
@@ -54,17 +54,17 @@ char* build_frame_I(char* data, unsigned int data_length){
  */
 ReturnType receive(int fd, Message *msg){
 
-   char* buf = (char *) malloc(BUF_SIZE);
+   unsigned char* buf = (unsigned char *) malloc(BUF_SIZE);
    
    State state = START;
    int size = 0;
    int done = 0;
    int hasData = 1; //flag que indica se é uma trama do tipo I
-   unsigned char bcc;
+   char bcc = (char)0x00;
 
    while (!done) 
    {   
-       unsigned char c;
+       char c;
        
        //le ate chegar ao estado de STOP
        if (state != STOP) 
@@ -119,7 +119,7 @@ ReturnType receive(int fd, Message *msg){
                }
                else
                {
-                   bcc = buf[1] ^ buf[2] & 0xff; //fica com os 2 utimos bits
+                   bcc = buf[1] ^ buf[2]; //fica com os 2 utimos bits
                         
                    if(c == bcc)
                    {
@@ -160,41 +160,56 @@ ReturnType receive(int fd, Message *msg){
        
    }
 
-   buf = (char*)realloc(buf,size);  //realloc para o tamanho certo da trama
+   buf = (unsigned char*)realloc(buf,size);  //realloc para o tamanho certo da trama
 
-   /*printf("Receive antes do desstuffing\n");
-   display(buf,size);*/
+   //printf("Receive antedo desstuffing\n");
+   //display(buf,size);
   
    int newsize = desstuff(&buf,size);   //recebe com stuff, fazemos desstuffing
    
-   /*printf("Receive depois do desstuffing\n");
-   display(buf,newsize); */
+   //printf("Receive depois do desstuffing\n");
+   //display(buf,newsize); 
   
   //---- Comeca a parte de analise da trama ----//
+   
+
   
    //trama do tipo I
    if(hasData)
    {
-        msg->type = setControlField(buf[2]);    //recebe o controlField antes de mudar o sequenceNumber
-       
+        
        //analisar o sequence number => se recebe igual ao que está guardado e porque ocorreu uma retransmissao
-       unsigned int ns = buf[2] >> 6;
+       unsigned int ns = (buf[2]) >> 6;
        if(ns == data_link.sequenceNumber){
            printf("WARNING: ocorreu uma retransmissao\n");
        }
+       
+
        data_link.sequenceNumber = ns;
+
+       msg->type = setControlField(buf[2]);    //recebe o controlField antes de mudar o sequenceNumber
         
        msg->message_size = newsize - FRAME_SIZE - 1; //-1 por causa da proteção dupla	
 
+       printf("ns = %d\nsequenceN = %x\n",ns,data_link.sequenceNumber);
+       printf("type = %d\n",msg->type);
+       printf("Buf[2] %x\n",buf[2]);
+       printf("Msg Size: %d\n",msg->message_size);
+
        int i;
        char bcc2 = (char)0x0;
+
        for(i = 0; i < msg->message_size; i++){
            bcc2 ^= buf[4+i];
        }
+
+       printf("BCC2 %x\nBUF4 %x\n",bcc2,buf[4+msg->message_size]);
        
-       if(bcc2 != buf[4+msg->message_size]){
+       /*if(bcc2 != buf[4+msg->message_size]){
            return DATAERROR;
-       }
+       }*/
+
+
         
         //colocar a mensagem recebida na struct
         memcpy(msg->message, &buf[4], msg->message_size); //destination, source, num 
@@ -217,7 +232,7 @@ ReturnType receive(int fd, Message *msg){
 /**
  * 
  */
-unsigned char getControlField(ControlFieldType flag)
+char getControlField(ControlFieldType flag)
 {    
     if(SET == flag){
         return FRAME_C_SET;
@@ -229,17 +244,17 @@ unsigned char getControlField(ControlFieldType flag)
         return FRAME_C_DISC;
     }
     else if(RR == flag){  // o nr é sempre o oposto do que recebe 
-        unsigned char nr = 1;
+        char nr = 1;
         if(data_link.sequenceNumber == 1) nr = 0;   
         return (FRAME_C_RR | (nr << 7));
     }
     else if(REJ == flag){   //igual para o REJ
-        unsigned char nr = 1;
+        char nr = 1;
         if(data_link.sequenceNumber == 1) nr = 0;   
         return FRAME_C_REJ | (nr << 7);
     }
     else if(I == flag){
-        return data_link.sequenceNumber << 6; //o controlo depende do sequenceNumber
+        return (data_link.sequenceNumber << 6); //o controlo depende do sequenceNumber
     }
     else
         printf("ainda nao esta definida\n");
@@ -257,23 +272,23 @@ ControlFieldType setControlField(char c){
     else if(FRAME_C_DISC == c){
         return DISC;
     }
-    else if(FRAME_C_RR == c || (FRAME_C_RR | (char)0x80) == c){
+    else if(FRAME_C_RR == c || ((unsigned char)0x85) == c){
         return RR;
     }
-    else if(FRAME_C_REJ == c || (FRAME_C_REJ | (char)0x80) == c){
+    else if(FRAME_C_REJ == c || ((unsigned char)0x81) == c){
         return REJ;
     }
-    else if(data_link.sequenceNumber << 6 == c ){
+    else if((data_link.sequenceNumber << 6) == c ){
         return I;
     }
     else
-        printf("%c - ainda nao esta definida\n",c);
+        printf("%x - %x ainda nao esta definida\n",c,data_link.sequenceNumber << 6);
 }
 
 /**
  * 
  */
-int stuff(char **frame, int frame_length){
+int stuff(unsigned char **frame, int frame_length){
      
     int newframe_length = 2; //as flags de incio e fim
     
@@ -281,7 +296,7 @@ int stuff(char **frame, int frame_length){
     int i;
     for (i = 1; i < (frame_length - 1); i++)
     {
-        char c = (*frame)[i];
+        unsigned char c = (*frame)[i];
         if ((c == FLAG) || (c == ESCAPE))
         {
             newframe_length++;
@@ -290,11 +305,11 @@ int stuff(char **frame, int frame_length){
     }
     
     //reservar espaço na memoria    
-    *frame = (char*)realloc(*frame,newframe_length);
+    *frame = (unsigned char*)realloc(*frame,newframe_length);
     
     for(i = 1; i < (frame_length-1); i++)
     {
-        char c = (*frame)[i];
+        unsigned char c = (*frame)[i];
         if(c == FLAG || c == ESCAPE)
         {
             memmove(*frame + i + 1, *frame + i, frame_length - i);//destino, source, num de bytes -> avançar 1 casa todos os bytes para a frente
@@ -310,12 +325,12 @@ int stuff(char **frame, int frame_length){
 /**
  * Processo contrario ao stuff
  */
-int desstuff(char **frame, int frame_length){
+int desstuff(unsigned char **frame, int frame_length){
     
     int i;
     for (i = 1; i < (frame_length - 1); i++)
     {
-        char c = (*frame)[i];
+        unsigned char c = (*frame)[i];
         if (c == ESCAPE)
         {
             memmove(*frame + i, *frame + i + 1, frame_length - i - 1);//destino, source, num de bytes -> avançar 1 casa todos os bytes para a tras
@@ -326,7 +341,7 @@ int desstuff(char **frame, int frame_length){
     }
     
     //realocar o espaco em memoria (o tamanho foi modificado)
-    *frame = (char *)realloc(*frame, frame_length);
+    *frame = (unsigned char *)realloc(*frame, frame_length);
     
     return frame_length;
 }
@@ -334,7 +349,7 @@ int desstuff(char **frame, int frame_length){
 /**
  * So para debugging
  */
-void display(char*frame, int n){
+void display(unsigned char*frame, int n){
     
     printf(">>>>>>>>>>\n");
     

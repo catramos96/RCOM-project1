@@ -5,19 +5,19 @@
  * Recebe as informações iniciais.
  * porta
  * flag: TRANSMITTER | RECEIVER
- * file
+ * file				//por agora ainda nao
  */
 int main(int argc, char** argv)
 {
    ///testar application layer
- /*   if(argc != 4)
+    if(argc != 4)
     {
       exit(1);
     }
     initApplicationLayer(argv[1],atoi(argv[2]),argv[3]);
-    //sender(0,argv[1]);*/
+    //sender(0,argv[1]);
 
-    if ( (argc < 3) || 
+  /*  if ( (argc < 3) || 
         ((strcmp("/dev/ttyS0", argv[1])!=0) && (strcmp("/dev/ttyS1", argv[1])!=0)) ||
         ((strcmp("TRANSMITTER", argv[2])!=0) && (strcmp("RECEIVER", argv[2])!=0)) )
     {
@@ -37,26 +37,12 @@ int main(int argc, char** argv)
     printf("-----------------------------------------------\n");
  
     char *data = "abcd";
-    char *data1 = "efgh";
-    char *newData1 = malloc(4);
-    char *newData2 = malloc(4);
-    
-    if(isReceiver){
-        llread(fd,newData1);
-        printf("NEW DATA : %s\n",newData1);
-        llread(fd,newData2);
-        printf("NEW DATA : %s\n",newData2);
-    }
-    else{
-        llwrite(fd,data,4);
-        llwrite(fd,data1,4);
-    }
+    if(isReceiver) llread(fd,NULL);
+    else llwrite(fd,data,4);
     
     printf("-----------------------------------------------\n");
     
     llclose(fd,isReceiver);
-    
-    //free(newData);
     
     /*
      * Teste BYTE stuffing
