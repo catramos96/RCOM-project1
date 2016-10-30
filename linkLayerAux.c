@@ -196,10 +196,12 @@ ReturnType receive(int fd, Message *msg){
        for(i = 0; i < msg->message_size; i++){
            bcc2 ^= buf[4+i];
        }
-       
+       printf("BCC - %x BUF - %x\n",bcc2,buf[4+msg->message_size]);
        if(bcc2 != buf[4+msg->message_size]){
            return DATAERROR;
        }
+
+
         
         //colocar a mensagem recebida na struct
         memcpy(msg->message, &buf[4], msg->message_size); //destination, source, num 
@@ -252,7 +254,7 @@ unsigned char getControlField(ControlFieldType flag)
 }
 
 ControlFieldType setControlField(unsigned char c){
-    
+  
     if(FRAME_C_SET == c){
         return SET;
     }

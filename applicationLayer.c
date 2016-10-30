@@ -247,28 +247,6 @@ int sender(){
         if(infoLayer.file_path[i] == '/'){
           pos = i;
         }
-      }int sender(){
-      int file;
-
-      //Open the file that it's going to be sent
-      if((file = open(infoLayer.file_path, O_RDONLY)) == -1){      //Meter mais flags
-        perror("Could not open file with filepath");
-        exit(-1);
-      }
-
-      //get status struct from the file
-      struct stat st;
-      if(stat(infoLayer.file_path,&st) == -1){
-        perror("Could not acess file status");
-        exit(-1);
-      }
-
-      //get file_name position
-      int pos = 0, i;
-      for(i = 0; i < strlen(infoLayer.file_path);i++){
-        if(infoLayer.file_path[i] == '/'){
-          pos = i;
-        }
       }
       
       //information about the file
@@ -320,57 +298,9 @@ int sender(){
         perror("Data size and data read are diferent");
         exit(-1);
       }
-      
-    return 0;
-}
-      
-      //information about the file
-      char *file_name = infoLayer.file_path+pos+1;
-      char file_size[16], file_date[16], file_perm[16];
 
-      int size = getFileSize(file);
-
-      sprintf(file_size,"%d",size);
-      printf("%s\n",file_size);
-      sprintf(file_date,"%lu",st.st_mtime);
-      sprintf(file_perm,"%u",st.st_mode);
-
-      //PACKAGE START
-     if(sendControlPackage(PKG_START,file_name,file_size,file_date,file_perm) == -1){
-        perror("Could not send Start Package");
-        exit(-1);
-      }
-
-      int STOP = 0, r = 0;
-      int written = 0;
-      
-      char *data = (char*) malloc(DATA_SIZE);
-
-      while(r = read(file,data,DATA_SIZE)){
-
-        if(r == -1){
-          perror("Could not read file");
-          exit(-1);
-        }
-
-        if(sendDataPackage(data,r) == -1){  
-          perror("Could not send DATA package");
-          exit(-1);
-        }
-        sequenceNumber++;
-        memset(data,0,DATA_SIZE);
-        written+=r;
-      }
-      free(data); 
-
-      //creates and sends package END
-      if(sendControlPackage(PKG_END,file_name,file_size,file_date,file_perm) == -1){
-        perror("Could not send Start Package");
-        exit(-1);
-      }
-
-      if(written != size){
-        perror("Data size and data read are diferent");
+      if(llclose(infoLayer.fileDescriptor,infoLayer.status) == -1){
+        perror("Could not close port");
         exit(-1);
       }
       
@@ -417,7 +347,8 @@ int receiver(){
 
       //PACKAGES DATA
     struct package *p = malloc(sizeof(struct package));
-     while(data_received < pkg.size){
+
+     while(1){
         
         written = 0;
 
@@ -430,7 +361,6 @@ int receiver(){
           break;
         }
         else if(p->type != PKG_DATA){
-          close(file);
           break;
         }
 
@@ -456,9 +386,9 @@ int receiver(){
 
       //Checks if the data received has the sama size of the original file
 
-      if(receivePackage(&pkg) == -1){
-          perror("Could not receive DATA package");
-          exit(-1);
+        if(llclose(infoLayer.fileDescriptor,infoLayer.status) == -1){
+        perror("Could not close port");
+        exit(-1);
         }
         
       close(file);
@@ -485,11 +415,6 @@ int initApplicationLayer(char *port,int status, char * file_path){
   }
   else{
     perror("Wrong status (RECEIVER - 1 or TRANSMITTER - 0");
-    exit(-1);
-  }
-
-  if(llclose(infoLayer.fileDescriptor,infoLayer.status) == -1){
-    perror("Could not close port");
     exit(-1);
   }
 
