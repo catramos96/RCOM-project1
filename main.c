@@ -16,8 +16,8 @@ int main(int argc, char** argv)
     }
     initApplicationLayer(argv[1],atoi(argv[2]),argv[3]);
     //sender(0,argv[1]);
-
-  /*  if ( (argc < 3) || 
+/*
+    if ( (argc < 3) || 
         ((strcmp("/dev/ttyS0", argv[1])!=0) && (strcmp("/dev/ttyS1", argv[1])!=0)) ||
         ((strcmp("TRANSMITTER", argv[2])!=0) && (strcmp("RECEIVER", argv[2])!=0)) )
     {
@@ -37,13 +37,14 @@ int main(int argc, char** argv)
     printf("-----------------------------------------------\n");
  
     char *data = "abcd";
-    if(isReceiver) llread(fd,NULL);
+    char *newData = malloc(4);
+    if(isReceiver) llread(fd,newData);
     else llwrite(fd,data,4);
     
     printf("-----------------------------------------------\n");
     
     llclose(fd,isReceiver);
-    
+    */
     /*
      * Teste BYTE stuffing
      */

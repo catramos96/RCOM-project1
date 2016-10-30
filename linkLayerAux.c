@@ -39,11 +39,13 @@ unsigned char* build_frame_I(unsigned char* data, unsigned int data_length){
     
     //data
     int i = 0;
+    unsigned char bcc2 = (unsigned char)0x0;
     for(i = 0; i < data_length; i++){
         frame[4+i] = data[i];
-        frame[4 + data_length] ^= frame[4 + i];  //BCC2
+        bcc2 ^= frame[4 + i];  //BCC2
     }
     
+    frame[4+data_length] = bcc2;
     frame[5+data_length] = FLAG;
     
     return frame;
@@ -60,11 +62,11 @@ ReturnType receive(int fd, Message *msg){
    int size = 0;
    int done = 0;
    int hasData = 1; //flag que indica se é uma trama do tipo I
-   char bcc = (char)0x00;
+   unsigned char bcc = (unsigned char)0x00;
 
    while (!done) 
    {   
-       char c;
+       unsigned char c;
        
        //le ate chegar ao estado de STOP
        if (state != STOP) 
@@ -173,7 +175,6 @@ ReturnType receive(int fd, Message *msg){
   //---- Comeca a parte de analise da trama ----//
    
 
-  
    //trama do tipo I
    if(hasData)
    {
@@ -184,32 +185,21 @@ ReturnType receive(int fd, Message *msg){
            printf("WARNING: ocorreu uma retransmissao\n");
        }
        
-
        data_link.sequenceNumber = ns;
 
        msg->type = setControlField(buf[2]);    //recebe o controlField antes de mudar o sequenceNumber
         
        msg->message_size = newsize - FRAME_SIZE - 1; //-1 por causa da proteção dupla	
 
-       printf("ns = %d\nsequenceN = %x\n",ns,data_link.sequenceNumber);
-       printf("type = %d\n",msg->type);
-       printf("Buf[2] %x\n",buf[2]);
-       printf("Msg Size: %d\n",msg->message_size);
-
        int i;
-       char bcc2 = (char)0x0;
-
+       unsigned char bcc2 = (unsigned char)0x0;
        for(i = 0; i < msg->message_size; i++){
            bcc2 ^= buf[4+i];
        }
-
-       printf("BCC2 %x\nBUF4 %x\n",bcc2,buf[4+msg->message_size]);
        
-       /*if(bcc2 != buf[4+msg->message_size]){
+       if(bcc2 != buf[4+msg->message_size]){
            return DATAERROR;
-       }*/
-
-
+       }
         
         //colocar a mensagem recebida na struct
         memcpy(msg->message, &buf[4], msg->message_size); //destination, source, num 
@@ -220,7 +210,7 @@ ReturnType receive(int fd, Message *msg){
          if(msg->type == RR || msg->type == REJ)
          {
             int nr = buf[2] >> 7;
-            data_link.sequenceNumber = nr;
+            data_link.sequenceNumber = nr;      //atualizo
          }
    }
    
@@ -232,7 +222,7 @@ ReturnType receive(int fd, Message *msg){
 /**
  * 
  */
-char getControlField(ControlFieldType flag)
+unsigned char getControlField(ControlFieldType flag)
 {    
     if(SET == flag){
         return FRAME_C_SET;
@@ -244,12 +234,12 @@ char getControlField(ControlFieldType flag)
         return FRAME_C_DISC;
     }
     else if(RR == flag){  // o nr é sempre o oposto do que recebe 
-        char nr = 1;
+        unsigned char nr = 1;
         if(data_link.sequenceNumber == 1) nr = 0;   
         return (FRAME_C_RR | (nr << 7));
     }
     else if(REJ == flag){   //igual para o REJ
-        char nr = 1;
+        unsigned char nr = 1;
         if(data_link.sequenceNumber == 1) nr = 0;   
         return FRAME_C_REJ | (nr << 7);
     }
@@ -261,7 +251,7 @@ char getControlField(ControlFieldType flag)
     
 }
 
-ControlFieldType setControlField(char c){
+ControlFieldType setControlField(unsigned char c){
     
     if(FRAME_C_SET == c){
         return SET;
@@ -282,7 +272,7 @@ ControlFieldType setControlField(char c){
         return I;
     }
     else
-        printf("%x - %x ainda nao esta definida\n",c,data_link.sequenceNumber << 6);
+        printf("%x ainda nao esta definida\n",c);
 }
 
 /**

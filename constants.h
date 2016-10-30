@@ -16,7 +16,7 @@
 #define FRAME_A (unsigned char)0x03	//campo de endereco 
 #define FRAME_A2 (unsigned char)0x01	//campo de endereco 
 
-#define FRAME_C_UA (unsigned char)0x05 	//Campo de controlo para trama UA
+#define FRAME_C_UA (unsigned char)0x07 	//Campo de controlo para trama UA
 #define FRAME_C_SET (unsigned char)0x03 	//Campo de controlo para a trama SET
 #define FRAME_C_I (unsigned char)0x40    //Campo de controlo para a trama I quando s=1
 #define FRAME_C_DISC (unsigned char)0x0B	//campo de controlo para trama DISC

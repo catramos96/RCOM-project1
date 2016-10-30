@@ -37,7 +37,7 @@ typedef enum {
 typedef struct
 {
     ControlFieldType type;
-    char isCommand; //ainda nao sei se devo colocar
+    //char isCommand; //ainda nao sei se devo colocar
     unsigned char message[BUF_SIZE];        
     unsigned int message_size;      
 } Message;
@@ -88,9 +88,9 @@ unsigned char* build_frame_I(unsigned char* data, unsigned int data_length);
 
 ReturnType receive(int fd, Message *msg);
 
-char getControlField(ControlFieldType flag);
+unsigned char getControlField(ControlFieldType flag);
 
-ControlFieldType setControlField(char flag);
+ControlFieldType setControlField(unsigned char flag);
 
 int stuff(unsigned char **frame, int frame_length);
 

@@ -256,7 +256,10 @@ int llwrite(int fd, unsigned char * buffer, int length){
                 printf("Trama REJ recebida\n");
                 alarmOff = 1;
             }
-            else    return 1;
+            else {
+                printf("erro desconhecido\n");
+                return 1;
+            }
         }
     }
     free(msg);
