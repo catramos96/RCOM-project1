@@ -1,4 +1,4 @@
-#include "linkLayerAux.c"
+#include "linkLayerAux.h"
 
 int alarmOff = 1;
 
@@ -10,8 +10,8 @@ void init_linkLayer(unsigned char* port){
     strcpy(data_link.port, port);
     data_link.baudRate = BAUDRATE;
     data_link.sequenceNumber = 0; //N(S) = 0
-    data_link.timeout = 1;
-    data_link.numTransmissions = 3;
+    data_link.timeout = TIMEOUT;
+    data_link.numTransmissions = RETRANSMITIONS;
 }
 
 void handler(){
@@ -157,7 +157,7 @@ int llopen_sender(int fd)
             }
 
             //ativa o alarme
-            alarm(1);  
+            alarm(data_link.timeout);  
             alarmOff = 0;
             tries++;
             printf("trama SET enviada!\n");
@@ -231,7 +231,7 @@ int llwrite(int fd, unsigned char * buffer, int length){
                 printf("erro de escrita em write()");
             }
             //ativa o alarme
-            alarm(1);  
+            alarm(data_link.timeout);  
             alarmOff = 0;
             tries++;
             
@@ -375,7 +375,7 @@ int llclose_sender(int fd)
                 printf("Erro na escrita write()");
             }
             //ativa o alarme
-            alarm(1);  
+            alarm(data_link.timeout);  
             alarmOff = 0;
             tries++;
             printf("trama DISC enviada!\n");
@@ -471,7 +471,7 @@ int llclose_receiver(int fd)
                 return -1;
             }
             //ativa o alarme
-            alarm(1);  
+            alarm(data_link.timeout);  
             alarmOff = 0;
             printf("trama DISC enviada!\n");
             

@@ -1,11 +1,9 @@
-#define BAUDRATE B9600 //38400
 #define MODEMDEVICE "/dev/ttyS1"
 #define _POSIX_SOURCE 1 /* POSIX compliant source */
 
 #define FALSE 0
 #define TRUE 1
 
-#define BUF_SIZE 255
 #define FRAME_SIZE 5
 
 #define FLAG (unsigned char)0x7E		//flag de inicio e fim de tramas
@@ -37,3 +35,9 @@
 
 #define RECEIVER		1
 #define TRANSMITTER		0
+
+static int BAUDRATE =  B9600; 
+static unsigned int RETRANSMITIONS = 3;
+static unsigned int TIMEOUT = 1;
+#define BUF_SIZE 255
+//unsigned int BUF_SIZE = 255;	//126

@@ -1,4 +1,4 @@
-#include "linkLayer.h"
+#include "linkLayerAux.h"
 
 //volatile int STOP=FALSE;
 

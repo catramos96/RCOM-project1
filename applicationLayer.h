@@ -8,8 +8,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <utime.h>
-#include "constants.h"
-#include "linkLayer.c"
+#include "linkLayerAux.h"
 
 /*PODE SER ALTERADO*/
 struct applicationLayer {

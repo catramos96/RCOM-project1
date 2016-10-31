@@ -1,5 +1,4 @@
-//#include "linkLayer.c"
-#include "applicationLayer.c"
+#include "applicationLayer.h"
 
 /**
  * Recebe as informações iniciais.
@@ -10,12 +9,47 @@
 int main(int argc, char** argv)
 {
    ///testar application layer
-    if(argc != 4)
+    if(argc != 1)
     {
+		perror("Invalid number of arguments");
       exit(1);
     }
-    initApplicationLayer(argv[1],atoi(argv[2]),argv[3]);
-    //sender(0,argv[1]);
+	
+	char port[20], status[5], path[128];
+	
+	printf("port (Write d for default value): ");
+	scanf("%s", port);
+	if(port=="d")				//TMP
+		strcpy(port,"/dev/ttyS1");
+	
+	printf("Transmitter (0) / receiver (1): ");
+	scanf("%s", status);
+	
+	printf("File path: ");
+	scanf("%s",path);
+	
+	/*printf("Baud rate (Write 0 for default value): ");
+	scanf("%d", BAUDRATE);
+	if(BAUDRATE==0)
+		BAUDRATE=B9600;
+	
+	printf("Maximum frame size (Write 0 for default value): ");
+	scanf("%d",BUF_SIZE);
+	if(BUF_SIZE==0)
+		BUF_SIZE=126;
+	
+	printf("Maximum retransmissions: ");
+	scanf("%d",RETRANSMITIONS);
+	
+	printf("Timeout: ");
+	scanf("%d",TIMEOUT);
+	
+	
+	*/
+	
+    initApplicationLayer(port,atoi(status),path);
+	//argv[1]-> porta, argv2 -> transmitter/receiver argv3->path
+   //sender(0,argv[1]);
 /*
     if ( (argc < 3) || 
         ((strcmp("/dev/ttyS0", argv[1])!=0) && (strcmp("/dev/ttyS1", argv[1])!=0)) ||
