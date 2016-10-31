@@ -28,18 +28,18 @@ int getFileSize(int file_descriptor){
   return size;
 }
 
-int sendControlPackage(char control,char * file_name, char * file_size, char * file_date, char * file_perm)
+int sendControlPackage(unsigned char control,unsigned char * file_name, unsigned char * file_size, unsigned char * file_date, unsigned char * file_perm)
 {
   int buffer_size = 9 + strlen(file_size) + strlen(file_name) + strlen(file_date) + strlen(file_perm);
 
-    char *pkg = malloc(buffer_size);
+    unsigned char *pkg = malloc(buffer_size);
     memset(pkg,0,buffer_size);
 
     int i = 0;
 
     pkg[i] = control;
 
-    printf("Type - %x\n",pkg[0]);               //DEBUG
+    //printf("Type - %x\n",pkg[0]);               //DEBUG
 
     i++;
 
@@ -47,9 +47,9 @@ int sendControlPackage(char control,char * file_name, char * file_size, char * f
     pkg[i+1] = strlen(file_size);
     memcpy(pkg+i+2,file_size,strlen(file_size));
 
-    printf("SizeT - %x\n",pkg[i]);                //DEBUG
+    /*printf("SizeT - %x\n",pkg[i]);                //DEBUG
     printf("SizeL - %x\n",pkg[i+1]);
-    printf("SizeV - %s\n",pkg + i + 2);
+    printf("SizeV - %s\n",pkg + i + 2);*/
 
     i += 2 + strlen(file_size);
 
@@ -57,9 +57,9 @@ int sendControlPackage(char control,char * file_name, char * file_size, char * f
     pkg[i+1] = strlen(file_name);
     memcpy(pkg+i+2,file_name,strlen(file_name));
 
-    printf("NameT - %x\n",pkg[i]);                //DEBUG
+    /*printf("NameT - %x\n",pkg[i]);                //DEBUG
     printf("NameL - %x\n",pkg[i+1]);
-    printf("NameV - %s\n",pkg + i + 2);
+    printf("NameV - %s\n",pkg + i + 2);*/
 
     i += 2 + strlen(file_name);
 
@@ -67,9 +67,9 @@ int sendControlPackage(char control,char * file_name, char * file_size, char * f
     pkg[i+1] = strlen(file_date);
     memcpy(pkg+i+2,file_date,strlen(file_date));
 
-    printf("DateT - %x\n",pkg[i]);                //DEBUG
+    /*printf("DateT - %x\n",pkg[i]);                //DEBUG
     printf("DateL - %x\n",pkg[i+1]);
-    printf("DateV - %s\n",pkg + i + 2);
+    printf("DateV - %s\n",pkg + i + 2);*/
 
     i += 2 + strlen(file_date);
 
@@ -77,9 +77,9 @@ int sendControlPackage(char control,char * file_name, char * file_size, char * f
     pkg[i+1] = strlen(file_perm);
     memcpy(pkg + i + 2,file_perm,strlen(file_perm));
 
-    printf("PermT - %x\n",pkg[i]);                //DEBUG
+    /*printf("PermT - %x\n",pkg[i]);                //DEBUG
     printf("PermL - %x\n",pkg[i+1]);
-    printf("PermV - %s\n",pkg + i + 2);
+    printf("PermV - %s\n",pkg + i + 2);*/
 
     /*printf("Pacote %s\n LENGTH %d\n\n",pkg,buffer_size);*/
 
@@ -91,10 +91,11 @@ int sendControlPackage(char control,char * file_name, char * file_size, char * f
   return 0;
 }
 
-int sendDataPackage(char * data,unsigned int size)
+int sendDataPackage(unsigned char * data,unsigned int size)
 {
-  int buffer_size = 4 + size;
-  char *pkg = malloc(buffer_size);
+  int buffer_size = 5 + size;
+  unsigned char *pkg = malloc(buffer_size);
+  memset(pkg,0,buffer_size);
 
   pkg[0] = PKG_DATA;
   pkg[1] = sequenceNumber;
@@ -116,7 +117,7 @@ int sendDataPackage(char * data,unsigned int size)
   return 0;
 }
 
-int receiveControlPackage(struct package *p,char * data){
+int receiveControlPackage(struct package *p,unsigned char * data){
 
    int n_bytes = 0, i = 1;
    char tmp[20];
@@ -161,16 +162,16 @@ int receiveControlPackage(struct package *p,char * data){
       p->file_perm = atoi(tmp);
 
       
-      printf("Type - %d\n",p->type);        //DEBUG
+      /*printf("Type - %d\n",p->type);        //DEBUG
       printf("Size - %d\n",p->total_size);     
       printf("Name - %s\n",p->file_name);
       printf("Date - %d\n",p->file_date);
-      printf("Perm - %d\n",p->file_perm);
+      printf("Perm - %d\n",p->file_perm);*/
 
     return 0;
 }
 
-int receiveDataPackage(struct package *p, char * data){
+int receiveDataPackage(struct package *p, unsigned char * data){
    int i = 1;
    int n2 = 0,n1 = 0;
 
@@ -182,18 +183,21 @@ int receiveDataPackage(struct package *p, char * data){
       p->size = n2+n1;
    
       memcpy(p->data,data + i,p->size);
-    
 
-      printf("Type - %d\n", p->type);             //DEBUG
+      /*printf("Type - %d\n", p->type);             //DEBUG
       printf("SNumber - %d\n",p->number);
       printf("Size - %d\n",p->size);
-      printf("Data:\n%s\n",p->data);
+      printf("DATA - %s\n",p->data);*/
+      for( i = 0 ; i < p->size ; i++){
+        printf("%c",p->data[i]);
+      }
+      printf("\n");
 
   return 0;
 }
 
 int receivePackage(struct package *p){
-  char* data = malloc(MAX_PKG_SIZE);
+  unsigned char* data = malloc(MAX_PKG_SIZE);
   memset(data,0,MAX_PKG_SIZE);
 
   if(llread(infoLayer.fileDescriptor,data) == -1){
@@ -250,8 +254,8 @@ int sender(){
       }
       
       //information about the file
-      char *file_name = infoLayer.file_path+pos+1;
-      char file_size[16], file_date[16], file_perm[16];
+      unsigned char *file_name = infoLayer.file_path+pos+1;
+      unsigned char file_size[16], file_date[16], file_perm[16];
 
       int size = getFileSize(file);
 
@@ -269,7 +273,7 @@ int sender(){
       int STOP = 0, r = 0;
       int written = 0;
       
-      char *data = (char*) malloc(DATA_SIZE);
+      unsigned char *data = (unsigned char*) malloc(DATA_SIZE);
 
       while(r = read(file,data,DATA_SIZE)){
 
@@ -311,16 +315,16 @@ int receiver(){
 	
   int file;
 
-  struct package pkg;
+  struct package * pkg = malloc(sizeof(struct package));
 
-  if(receivePackage(&pkg)){
+  if(receivePackage(pkg)){
     perror("Error at receiving the START package");
     exit(-1);
   } 
 
   //create the file with the same permissions
-  char path[128];
-  sprintf(path,"%s/%s",infoLayer.file_path,pkg.file_name);
+  unsigned char path[128];
+  sprintf(path,"%s/%s",infoLayer.file_path,pkg->file_name);
 //pkg->file_perm
   if((file = open(path,O_APPEND | O_CREAT | O_WRONLY,S_IRWXU | S_IRWXG | S_IRWXO)) == -1){  //FALTAM FLAGS
     perror("Could not create the file in the receiver");
@@ -334,37 +338,37 @@ int receiver(){
   stat(path, &st);
 
     new_times.actime = st.st_atime;  
-    new_times.modtime = pkg.file_date;    
+    new_times.modtime = pkg->file_date;    
     utime(path, &new_times);
 
     //ver mais tarde
     /*printf("Permissions - %lu - %d\n",st.st_mode,pkg->file_perm);   //DEBUG
     printf("Date - %lu - %d\n",st.st_mtime,pkg->file_date);*/
 
-    int type = 0;
     int written = 0;        //written per package
     int data_received = 0;    //written in the final
 
       //PACKAGES DATA
-    struct package *p = malloc(sizeof(struct package));
 
      while(1){
         
         written = 0;
-
-        if(receivePackage(p) == -1){
+        memset(pkg->data,0,DATA_SIZE);
+        if(receivePackage(pkg) == -1){
           perror("Could not receive DATA package");
           exit(-1);
         }
 
-        if(p->type == PKG_END){
-          break;
-        }
-        else if(p->type != PKG_DATA){
-          break;
+        if(pkg->type != PKG_DATA){
+          if(pkg->type == PKG_END)
+            break;
+          else{
+            perror("Last package not an END package");
+            exit(-1);
+          }
         }
 
-        if(p->number != sequenceNumber){
+        if(pkg->number != sequenceNumber){
           perror("Wrong order of the DATA packages received");
           exit(-1);
         }
@@ -373,16 +377,16 @@ int receiver(){
 
         //Write data on the created file
         do{      
-          if((written += write(file , p->data+written , p->size)) == -1){
+          if((written += write(file , pkg->data+written , pkg->size)) == -1){
             perror("Could not write in the created file of receiver");
             exit(-1);
           }
-        }while(written != p->size);
+        }while(written < pkg->size);
 
         data_received += written;     //confirmar com package end
-        memset(p,0,sizeof(struct package));
+        
       };
-      free(p);
+      
 
       //Checks if the data received has the sama size of the original file
 
@@ -390,12 +394,12 @@ int receiver(){
         perror("Could not close port");
         exit(-1);
         }
-        
+      free(pkg);
       close(file);
 	return 0;
 }
 
-int initApplicationLayer(char *port,int status, char * file_path){
+int initApplicationLayer(unsigned char *port,int status, unsigned char * file_path){
   infoLayer.status = status;
   memcpy(infoLayer.file_path,file_path,strlen(file_path));
 

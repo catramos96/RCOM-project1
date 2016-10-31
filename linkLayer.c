@@ -15,6 +15,7 @@ void init_linkLayer(unsigned char* port){
 }
 
 void handler(){
+    printf("ALARM TIME OUT !!!!\n");
 	alarmOff = 1;
 }
 
@@ -49,8 +50,8 @@ int llopen(unsigned char* port, int isReceiver)
 
 	// set input mode (non-canonical, no echo,...) 
 	newtio.c_lflag = 0;
-	newtio.c_cc[VTIME]    = 30;   // inter-character timer unused : t=TIME*0.1 
-	newtio.c_cc[VMIN]     = 5;    // blocking read until 5 chars received
+	newtio.c_cc[VTIME]    = 5;   // inter-character timer unused : t=TIME*0.1 
+	newtio.c_cc[VMIN]     = 0;    // blocking read until 5 chars received
 
 	tcflush(fd, TCIFLUSH);
 
@@ -194,7 +195,7 @@ int llopen_sender(int fd)
 * @return número de caracteres escritos ; valor negativo em caso de erro
 */
 int llwrite(int fd, unsigned char * buffer, int length){
-	
+    
     (void) signal(SIGALRM, handler);  // instala  rotina que atende interrupcao
     int tries = 0;
     int n_written = 0;
@@ -204,12 +205,12 @@ int llwrite(int fd, unsigned char * buffer, int length){
     //criacao da trama I
     unsigned char *frame_i = build_frame_I(buffer,length);  
     int size = length+FRAME_SIZE+1;
-	
+    
     /* printf("llwrite I antes do sfuffing\n");
     display(frame_i, size); */
-	
+    
     int newsize = stuff(&frame_i,size);
-	
+    
     /*printf("llwrite I depois do sfuffing\n");
     display(frame_i, newsize);*/
 
@@ -221,6 +222,7 @@ int llwrite(int fd, unsigned char * buffer, int length){
     {
         if(tries == 0 || alarmOff) //só envia a trama se : for a primeira tentativa ou o alarme for desativado
         {
+      
             if(tries >= data_link.numTransmissions)
             {
                 printf("Numero de tentativas excedida!\n");
@@ -239,6 +241,7 @@ int llwrite(int fd, unsigned char * buffer, int length){
         }
         
         //Verificar e receber a trama RR OU REJ com Nr = 1
+  
         ReturnType ret = receive(fd,msg);
         
         if(ret == ERROR)    return 1;
@@ -256,16 +259,16 @@ int llwrite(int fd, unsigned char * buffer, int length){
                 printf("Trama REJ recebida\n");
                 alarmOff = 1;
             }
-            else {
+            /*else {
                 printf("erro desconhecido\n");
                 return 1;
-            }
+            }*/
         }
     }
     free(msg);
-
     return n_written;
 }
+
 
 /*
 * @param fd identificador da ligação de dados
@@ -276,46 +279,65 @@ int llread(int fd, unsigned char * buffer){
 
     int res;
     unsigned char *frame = NULL;
-    
+    int done = 0;
     //rececao da trama I (read) com verificacao de erros e desstuffing
     Message* msg = (Message*)malloc(sizeof(Message));
-    ReturnType ret = receive(fd,msg);
-
-    if(ret == ERROR){
-        printf("ERROR !\n");
-        return 1;
-    }     
-    else if(ret == DATAERROR){
-        frame = build_frame_SU(REJ);   // constroi a trama REJ se erros nos dados
-        printf("DATA ERROR !\n");
-    }
-    else
-    {
-        memcpy(buffer, &msg->message,msg->message_size);//destination, source, num B
-        int i = 0;
-        frame = build_frame_SU(RR);  //criacao da trama RR
-        printf("Trama I recebida!\n");  //caso de sucesso
-    }
+    int send = 0;
     
-    free(msg);
-		
-    /*printf("llread RR antes do sfuffing\n");
-    display(rr,FRAME_SIZE);*/
-	
-    int newsize = stuff(&frame,FRAME_SIZE);
-  
-    /* printf("llread RR depois do sfuffing\n");
-    display(rr,newsize);*/
-	
-    //envia a trama RR/REJ
-    if((res = write(fd,frame,newsize)) == -1)    //Envio da Trama I0
-    {
-        perror("write llread");
-        return 1;
+    while(!done){
+
+        ReturnType ret = receive(fd,msg);
+
+        if(ret == ERROR){
+            printf("ERROR !\n");
+            return 1;
+        }     
+        else if(ret == DATAERROR){
+            frame = build_frame_SU(REJ);   // constroi a trama REJ se erros nos dados
+            printf("DATA ERROR !\n");
+            send = 1;
+        }
+        else
+        {
+            if(msg->type == I){
+                memcpy(buffer, &msg->message,msg->message_size);//destination, source, num B
+                int i = 0;
+                frame = build_frame_SU(RR);  //criacao da trama RR
+                printf("Trama I recebida!\n");  //caso de sucesso
+                done = 1;
+                send = 1;
+            }
+            else{
+                printf("Espera!\n");  //caso de sucesso
+            }
+        }
+
+        
+    		
+        /*printf("llread RR antes do sfuffing\n");
+        display(rr,FRAME_SIZE);*/
+    	if(send){
+            int newsize = stuff(&frame,FRAME_SIZE);
+          
+            /* printf("llread RR depois do sfuffing\n");
+            display(rr,newsize);*/
+        	
+            //envia a trama RR/REJ
+            if((res = write(fd,frame,newsize)) == -1)    //Envio da Trama I0
+            {
+                perror("write llread");
+                return 1;
+            }
+
+            else{
+                printf("Trama RR/REJ enviada!\n");
+            }
+            send = 0;
+        }
+    
     }
-    else
-        printf("Trama RR/REJ enviada!\n");
-	
+    free(msg);
+	alarm(0);
     return 0;
 }
 

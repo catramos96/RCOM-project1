@@ -63,6 +63,7 @@ ReturnType receive(int fd, Message *msg){
    int done = 0;
    int hasData = 1; //flag que indica se é uma trama do tipo I
    unsigned char bcc = (unsigned char)0x00;
+   int res = 0;
 
    while (!done) 
    {   
@@ -71,10 +72,14 @@ ReturnType receive(int fd, Message *msg){
        //le ate chegar ao estado de STOP
        if (state != STOP) 
        {
-           if((read(fd,&c,1)) == -1)
+           res = read(fd,&c,1);
+           if(res == -1)
            {
                perror("read receiver");
                return ERROR;
+           }
+          else if(res == 0){
+            return OK;     //TMP
            }
        }
        
@@ -196,7 +201,7 @@ ReturnType receive(int fd, Message *msg){
        for(i = 0; i < msg->message_size; i++){
            bcc2 ^= buf[4+i];
        }
-       printf("BCC - %x BUF - %x\n",bcc2,buf[4+msg->message_size]);
+
        if(bcc2 != buf[4+msg->message_size]){
            return DATAERROR;
        }
