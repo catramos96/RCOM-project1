@@ -102,7 +102,7 @@ int llopen_receiver(int fd)
 	/*printf("llopen_receiver UA antes do stuffing\n");
 	display(ua, FRAME_SIZE);*/
 
-	int newsize = stuff(&ua, FRAME_SIZE);
+	int newsize = stuff(ua, FRAME_SIZE);
 
 	/*printf("llopen_receiver UA depois do stuffing\n");
 	display(ua, newsize);*/
@@ -133,7 +133,7 @@ int llopen_sender(int fd)
     display(set, FRAME_SIZE);*/
 	
     //stuffing
-    int newsize = stuff(&set, FRAME_SIZE);
+    int newsize = stuff(set, FRAME_SIZE);
 	
     /*printf("llopen_sender SET depois do sfuffing\n");
     display(set, newsize);*/
@@ -209,7 +209,7 @@ int llwrite(int fd, unsigned char * buffer, int length){
     /* printf("llwrite I antes do sfuffing\n");
     display(frame_i, size); */
     
-    int newsize = stuff(&frame_i,size);
+    int newsize = stuff(frame_i,size);
     
     /*printf("llwrite I depois do sfuffing\n");
     display(frame_i, newsize);*/
@@ -317,7 +317,7 @@ int llread(int fd, unsigned char * buffer){
         /*printf("llread RR antes do sfuffing\n");
         display(rr,FRAME_SIZE);*/
     	if(send){
-            int newsize = stuff(&frame,FRAME_SIZE);
+            int newsize = stuff(frame,FRAME_SIZE);
           
             /* printf("llread RR depois do sfuffing\n");
             display(rr,newsize);*/
@@ -378,7 +378,7 @@ int llclose_sender(int fd)
    /* printf("llclose_sender DISC antes do sfuffing\n");
     display(disc, FRAME_SIZE);*/
 	
-    int newsize = stuff(&disc, FRAME_SIZE);
+    int newsize = stuff(disc, FRAME_SIZE);
 	
     /*printf("llclose_sender DISC depois do sfuffing\n");
     display(disc, newsize);*/
@@ -428,7 +428,7 @@ int llclose_sender(int fd)
     /*printf("llclose_sender UA antes do sfuffing\n");
     display(ua, FRAME_SIZE);*/
 	
-    int newsizeUA = stuff(&ua, FRAME_SIZE);
+    int newsizeUA = stuff(ua, FRAME_SIZE);
 	
     /*printf("llclose_sender UA depois do sfuffing\n");
     display(ua, newsizeUA);*/
@@ -456,7 +456,7 @@ int llclose_receiver(int fd)
     /*printf("llclose_receiver DISC antes do sfuffing\n");
     display(disc, FRAME_SIZE);*/
     
-    int newsize = stuff(&disc,FRAME_SIZE);
+    int newsize = stuff(disc,FRAME_SIZE);
 	
    /* printf("llclose_receiver DISC depois do sfuffing\n");
     display(disc, newsize);*/

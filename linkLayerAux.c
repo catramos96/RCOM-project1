@@ -172,7 +172,7 @@ ReturnType receive(int fd, Message *msg){
    //printf("Receive antedo desstuffing\n");
    //display(buf,size);
   
-   int newsize = desstuff(&buf,size);   //recebe com stuff, fazemos desstuffing
+   int newsize = desstuff(buf,size);   //recebe com stuff, fazemos desstuffing
    
    //printf("Receive depois do desstuffing\n");
    //display(buf,newsize); 
@@ -285,15 +285,15 @@ ControlFieldType setControlField(unsigned char c){
 /**
  * 
  */
-int stuff(unsigned char **frame, int frame_length){
-     
+int stuff(unsigned char *frame, int frame_length){
+   
     int newframe_length = 2; //as flags de incio e fim
     
     //por cada flag ou escape vou adicionar +1 byte
     int i;
     for (i = 1; i < (frame_length - 1); i++)
     {
-        unsigned char c = (*frame)[i];
+        unsigned char c = frame[i];
         if ((c == FLAG) || (c == ESCAPE))
         {
             newframe_length++;
@@ -302,47 +302,89 @@ int stuff(unsigned char **frame, int frame_length){
     }
     
     //reservar espaço na memoria    
-    *frame = (unsigned char*)realloc(*frame,newframe_length);
+    frame = (unsigned char*)realloc(frame,newframe_length);
     
+    //percorre a trama 
     for(i = 1; i < (frame_length-1); i++)
     {
-        unsigned char c = (*frame)[i];
+        unsigned char c = frame[i];
         if(c == FLAG || c == ESCAPE)
         {
-            memmove(*frame + i + 1, *frame + i, frame_length - i);//destino, source, num de bytes -> avançar 1 casa todos os bytes para a frente
-            (*frame)[i] = ESCAPE;
-            (*frame)[i++] = c ^ AUX;
+            memmove(frame + i + 1, frame + i, frame_length - i);//destino, source, num de bytes -> avançar 1 casa todos os bytes para a frente
+            frame[i] = ESCAPE;
+            frame[i+1] ^= AUX;
+            
             frame_length++;
         }
     }
     
     return newframe_length;
+   
+ /*  int newBufSize = frame_length;
+
+	int i;
+	for (i = 1; i < frame_length - 1; i++)
+		if ((frame)[i] == FLAG || (frame)[i] == ESCAPE)
+			newBufSize++;
+
+	frame = (unsigned char*) realloc(frame, newBufSize);
+
+	for (i = 1; i < frame_length - 1; i++) {
+		if ((frame)[i] == FLAG || (frame)[i] == ESCAPE) {
+			memmove(frame + i + 1, frame + i, frame_length - i);
+
+			frame_length++;
+
+			(frame)[i] = ESCAPE;
+			(frame)[i + 1] ^= 0x20;
+		}
+	}
+
+return newBufSize;*/
 }
 
 /**
  * Processo contrario ao stuff
  */
-int desstuff(unsigned char **frame, int frame_length){
+int desstuff(unsigned char *frame, int frame_length){
     
     int i;
     for (i = 1; i < (frame_length - 1); i++)
     {
-        unsigned char c = (*frame)[i];
+        unsigned char c = frame[i];
         if (c == ESCAPE)
         {
-            memmove(*frame + i, *frame + i + 1, frame_length - i - 1);//destino, source, num de bytes -> avançar 1 casa todos os bytes para a tras
-            frame_length--;
+            memmove(frame + i, frame + i + 1, frame_length - i - 1);//destino, source, num de bytes -> avançar 1 casa todos os bytes para a tras
+            frame[i] ^= AUX;
             
-            (*frame)[i] ^= AUX;
+            frame_length--; //atualiza o tamanho
         }
     }
     
     //realocar o espaco em memoria (o tamanho foi modificado)
-    *frame = (unsigned char *)realloc(*frame, frame_length);
+    frame = (unsigned char *)realloc(frame, frame_length);
     
     return frame_length;
-}
+    /*
+    
+    int i;
+	for (i = 1; i < frame_length - 1; ++i) {
+		if ((frame)[i] == ESCAPE) {
+			memmove(frame + i, frame + i + 1, frame_length - i - 1);
 
+			frame_length--;
+
+			(frame)[i] ^= 0x20;
+		}
+	}
+
+	frame = (unsigned char*) realloc(frame, frame_length);
+
+return frame_length;*/
+}
+    
+    
+    
 /**
  * So para debugging
  */

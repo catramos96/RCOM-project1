@@ -82,16 +82,3 @@ int llclose_receiver(int fd);
 
 int llclose_sender(int fd);
 
-unsigned char* build_frame_SU(ControlFieldType flag); //tramas do tipo S ou UA
-
-unsigned char* build_frame_I(unsigned char* data, unsigned int data_length);
-
-ReturnType receive(int fd, Message *msg);
-
-unsigned char getControlField(ControlFieldType flag);
-
-ControlFieldType setControlField(unsigned char flag);
-
-int stuff(unsigned char **frame, int frame_length);
-
-int desstuff(unsigned char **frame, int frame_length);
