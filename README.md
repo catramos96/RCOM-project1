@@ -1,3 +1,7 @@
+# Relatório #
+
+https://docs.google.com/document/d/1kmi_Fj4mGASmqxhOTDoC3Hnxkl3D-4IZNzam-zsMRIo/edit
+
 # Estruturação #
 
 o trabalho está divido em camadas:
