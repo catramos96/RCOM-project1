@@ -1,5 +1,6 @@
-#include "linkLayerAux.h"
+#include "linkLayer.h"
 
+struct termios oldtio;
 int retry = 0;
 
 /**
@@ -27,7 +28,7 @@ void handler(){
 int llopen(unsigned char* port, int isReceiver)
 {
 	int fd,c,res;
-	struct termios newtio, oldtio;
+	struct termios newtio;
 	//char buf[BUF_SIZE];
 
 	//abre a porta para leitura e escrita
@@ -218,6 +219,7 @@ int llwrite(int fd, unsigned char * buffer, int length){
 
     //criacao da trama I
     unsigned char *frame_i = build_frame_I(buffer,length);  
+    printf("llwrite: %d\n",data_link.sequenceNumber);
     int size = length+FRAME_SIZE+1;
     
     /* printf("llwrite I antes do sfuffing\n");
@@ -251,7 +253,7 @@ int llwrite(int fd, unsigned char * buffer, int length){
             retry = 0;
             tries++;
             
-            printf("Trama I enviada!\n");
+            printf("Trama I enviada (%d)!\n", data_link.sequenceNumber);
         }
         
         //Verificar e receber a trama RR OU REJ com Nr = 1
@@ -271,7 +273,9 @@ int llwrite(int fd, unsigned char * buffer, int length){
             else if(msg->type == REJ)
             {
                 printf("Trama REJ recebida\n");
-                retry = 1;
+				//if(data_link.sequenceNumber == 1) data_link.sequenceNumber=0;
+				//else data_link.sequenceNumber=1;                
+				retry = 1;
             }
             /*else {
                 printf("erro desconhecido\n");
@@ -312,18 +316,23 @@ int llread(int fd, unsigned char * buffer){
             send = 1;
         }
         else
-        {
-            if(msg->type == I){
-                memcpy(buffer, &msg->message,msg->message_size);//destination, source, num B
-                int i = 0;
-                frame = build_frame_SU(RR);  //criacao da trama RR
-                printf("Trama I recebida!\n");  //caso de sucesso
-                done = 1;
+        {        	
+            if(msg->type == I)
+            {
+            	if(!msg->isRetransmission){
+                	memcpy(buffer, &msg->message,msg->message_size);//destination, source, num B
+					done = 1;
+				}
+				
+               
+           		frame = build_frame_SU(RR);  //criacao da trama RR
+                printf("Trama I recebida (%d)!\n", data_link.sequenceNumber);  //caso de sucesso
+                
                 send = 1;
             }
-            else{
+            /*else{
                 printf("Espera!\n");  //caso de sucesso
-            }
+            }*/
         }
 
         
@@ -357,7 +366,6 @@ int llread(int fd, unsigned char * buffer){
 
 int llclose(int fd, int isReceiver)
 {
-	struct termios newtio, oldtio;
 	int ret=0;
 	switch(isReceiver)
 	{
@@ -371,6 +379,7 @@ int llclose(int fd, int isReceiver)
 			printf("Segundo argumento errado, apenas use 1 se for o receiver e 0 para o sender");
 			return 1;
 	}
+	sleep(1);
 	if ( tcsetattr(fd,TCSANOW,&oldtio) == -1)
 	{
 		perror("tcsetattr");

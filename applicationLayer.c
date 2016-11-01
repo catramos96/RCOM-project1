@@ -439,7 +439,6 @@ int initApplicationLayer(unsigned char *port, int status, unsigned char * file_p
     sender();
   }
   else if(status == RECEIVER){
-    data_link.sequenceNumber = 1;
     receiver();
   }
   else{
