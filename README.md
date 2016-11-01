@@ -1,3 +1,6 @@
+Se combinarem ir para a feup testar nos pcs do lab avisem-me pff.
+Obg, Filipe
+
 # Relatório #
 
 https://docs.google.com/document/d/1kmi_Fj4mGASmqxhOTDoC3Hnxkl3D-4IZNzam-zsMRIo/edit
@@ -24,6 +27,13 @@ o trabalho está divido em camadas:
 
 **Link Layer** (responsável -> Inês)
 
+* seq number do link layer do receiver devia começar em 1 senão a primeira trama I recebida dá um warning de retransmissão
+
+* retransmissões detectadas que tenham sido recebidas previamente com sucesso devem ser ignoradas (enviar apenas resposta)
+
+* receiver fica indefinidamente a enviar a trama DISC - descobrir erro
+
+
 * descobrir o erro do bbc2
 
 * colocar o stuffing para tudo
@@ -36,7 +46,7 @@ o trabalho está divido em camadas:
 
 **application Layer**
 
-* tudo
+* a ordem da info do start package (tamanho, nome, data, permissoes) deve ser indiferente segundo o professor (o receiver deve ser capaz de ler a start package independentemente da ordem)
 
 
 # Duvidas : #
