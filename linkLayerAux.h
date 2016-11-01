@@ -12,6 +12,6 @@ ControlFieldType setControlField(unsigned char c);
 
 int stuff(unsigned char *frame, int frame_length);
 
-int desstuff(unsigned char *frame, int frame_length);
+int destuff(unsigned char *frame, int frame_length);
 
 void display(unsigned char *frame, int n);

@@ -19,8 +19,8 @@ int main(int argc, char** argv)
 	
     printf("port (Write d for default value): ");
     scanf("%s", port);
-    //if(port=="d")				//TMP
-     //   strcpy(port,"/dev/ttyS1");
+	if( strcmp(port, "d") == 0)				//TMP
+		strcpy(port, "/dev/ttyS1");
 	
     printf("Transmitter (0) / receiver (1): ");
     scanf("%s", status);
@@ -120,6 +120,6 @@ int main(int argc, char** argv)
     printf("\nInfo depois do desstuffing:\n");
     for(i = 0; i < newsize; i++){
         printf("%c\n",info[i]);
-    }
-    return 0;*/
+    }*/
+    return 0;
 }

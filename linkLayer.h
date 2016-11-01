@@ -57,7 +57,7 @@ typedef enum {
  * OK - sem erros
  */
 typedef enum {
-    ERROR, DATAERROR, OK
+    ERROR, DATAERROR, OK, EMPTY
 } ReturnType;
 
 static dataLink data_link;

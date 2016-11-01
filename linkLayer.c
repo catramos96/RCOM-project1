@@ -1,6 +1,6 @@
 #include "linkLayerAux.h"
 
-int alarmOff = 1;
+int retry = 0;
 
 /**
 * Inicializacao do layerLink
@@ -15,8 +15,8 @@ void init_linkLayer(unsigned char* port){
 }
 
 void handler(){
-    printf("ALARM TIME OUT !!!!\n");
-	alarmOff = 1;
+    printf("TIMEOUT\n");
+    retry = 1;
 }
 
 /*
@@ -60,11 +60,18 @@ int llopen(unsigned char* port, int isReceiver)
 		return 1;
 	}
 
-	if(isReceiver) llopen_receiver(fd);
-	else llopen_sender(fd);
+	if(isReceiver)
+	{
+	  if(llopen_receiver(fd) == -1)
+	    return -1;
+	}
+	else
+	{
+	  if(llopen_sender(fd) == -1)
+	    return -1;
+	}
 	
 	return fd;
-
 }
 
 int llopen_receiver(int fd)
@@ -75,24 +82,27 @@ int llopen_receiver(int fd)
 
 	//Verificar e receber a trama SET 
         Message* msg = (Message*)malloc(sizeof(Message));
-        ReturnType ret = receive(fd,msg);
+
+	ReturnType ret;
+	do{
+          ret = receive(fd,msg);
         
-	if(ret == ERROR)
-        {
-            printf("Erro no cabecalho");
-            return 1;
-	}
-	else if(ret == OK)
-        {
+	  if(ret == ERROR)
+          {
+            printf("Erro no cabecalho\n");
+            return -1;
+	  }
+	  else if(ret == OK)
+          {
             //verifica que e uma trama do tipo SET 
             if(msg->type == SET)    printf("Trama SET recebida!\n");
             else
             {
-                printf("Erro no cabecalho");
-                return 1;
-            }
-            
-        }
+              printf("Erro no cabecalho\n");
+              return -1;
+            }            
+          }
+	}while(ret == EMPTY);
         
         free(msg);  //liberta a mensagem
 
@@ -138,17 +148,17 @@ int llopen_sender(int fd)
     /*printf("llopen_sender SET depois do sfuffing\n");
     display(set, newsize);*/
 	
-     Message* msg = (Message*)malloc(sizeof(Message));
+    Message* msg = (Message*)malloc(sizeof(Message));
     
     int tries = 0;
     while(!done)
     {
-        if(tries == 0 || alarmOff) //só envia a trama se : for a primeira tentativa ou o alarme for desativado
+        if(tries == 0 || retry) //só envia a trama se : for a primeira tentativa ou o alarme for desativado
         {
             if(tries >= data_link.numTransmissions)
             {
                 printf("Numero de tentativas excedida!\n");
-                return 1;
+                return -1;
             }
             
             //envia a trama
@@ -159,7 +169,7 @@ int llopen_sender(int fd)
 
             //ativa o alarme
             alarm(data_link.timeout);  
-            alarmOff = 0;
+            retry = 0;
             tries++;
             printf("trama SET enviada!\n");
         }
@@ -167,19 +177,23 @@ int llopen_sender(int fd)
         //Verificar e receber a trama UA
         ReturnType ret = receive(fd,msg);
         
-        if(ret == ERROR)    return -1;
-        else
+        if(ret != EMPTY)
         {
+          if(ret == ERROR)
+            return -1;
+          else
+          {
             //verifica o tipo da mensagem
             if(msg->type == UA){
-                done = 1;
-                free(set); // liberta a memoria da trama criada
-                printf("trama UA recebida!\n");
+              done = 1;
+              free(set); // liberta a memoria da trama criada
+              printf("trama UA recebida!\n");
             }
             else{
-                printf("Erro no cabecalho\n");
-                return -1;
+              printf("Erro no cabecalho\n");
+              return -1;
             }
+          }
         }
     }
     free(msg);
@@ -214,27 +228,27 @@ int llwrite(int fd, unsigned char * buffer, int length){
     /*printf("llwrite I depois do sfuffing\n");
     display(frame_i, newsize);*/
 
-      Message* msg = (Message*)malloc(sizeof(Message));
+    Message* msg = (Message*)malloc(sizeof(Message));
         
     //envio da trama I(0) (write)
     //rececao da trama RR / REJ (read)
     while(!done)
     {
-        if(tries == 0 || alarmOff) //só envia a trama se : for a primeira tentativa ou o alarme for desativado
+        if(tries == 0 || retry) //só envia a trama se : for a primeira tentativa ou o alarme disparar
         {
       
             if(tries >= data_link.numTransmissions)
             {
                 printf("Numero de tentativas excedida!\n");
-                return 1;
+                return -1;
             }
             if((n_written = write(fd,frame_i,newsize)) == -1)    //Envio da Trama I0
             {
-                printf("erro de escrita em write()");
+                printf("Erro de escrita em write()");
             }
             //ativa o alarme
             alarm(data_link.timeout);  
-            alarmOff = 0;
+            retry = 0;
             tries++;
             
             printf("Trama I enviada!\n");
@@ -244,7 +258,7 @@ int llwrite(int fd, unsigned char * buffer, int length){
   
         ReturnType ret = receive(fd,msg);
         
-        if(ret == ERROR)    return 1;
+        if(ret == ERROR)    return -1;
         else
         {
             //verifica o tipo da mensagem
@@ -257,11 +271,11 @@ int llwrite(int fd, unsigned char * buffer, int length){
             else if(msg->type == REJ)
             {
                 printf("Trama REJ recebida\n");
-                alarmOff = 1;
+                retry = 1;
             }
             /*else {
                 printf("erro desconhecido\n");
-                return 1;
+                return -1;
             }*/
         }
     }
@@ -290,7 +304,7 @@ int llread(int fd, unsigned char * buffer){
 
         if(ret == ERROR){
             printf("ERROR !\n");
-            return 1;
+            return -1;
         }     
         else if(ret == DATAERROR){
             frame = build_frame_SU(REJ);   // constroi a trama REJ se erros nos dados
@@ -326,7 +340,7 @@ int llread(int fd, unsigned char * buffer){
             if((res = write(fd,frame,newsize)) == -1)    //Envio da Trama I0
             {
                 perror("write llread");
-                return 1;
+                return -1;
             }
 
             else{
@@ -385,7 +399,7 @@ int llclose_sender(int fd)
 		
     while(!done)
     {
-        if(tries == 0 || alarmOff) //só envia a trama se : for a primeira tentativa ou o alarme for desativado
+        if(tries == 0 || retry) //só envia a trama se : for a primeira tentativa ou o alarme disparar
         {
             if(tries >= data_link.numTransmissions)
             {
@@ -398,7 +412,7 @@ int llclose_sender(int fd)
             }
             //ativa o alarme
             alarm(data_link.timeout);  
-            alarmOff = 0;
+            retry = 0;
             tries++;
             printf("trama DISC enviada!\n");
         }
@@ -415,7 +429,7 @@ int llclose_sender(int fd)
                 printf("Trama DISC recebida!\n");
             }
             else{
-                printf("Erro no cabecalho");
+                printf("Erro no cabecalho\n");
                 return 1;
             }
         }
@@ -480,12 +494,12 @@ int llclose_receiver(int fd)
                     printf("Trama DISC recebida!\n");          
                 }
                 else{
-                    printf("erro no cabecalho\n");
+                    printf("Erro no cabecalho\n");
                     return -1;
                 }
             }
         }
-        if(tries == 1 || alarmOff) //só envia a trama se : for a primeira tentativa ou o alarme for desativado
+        if(tries == 1 || retry) //só envia a trama se : for a primeira tentativa ou o alarme disparar
         {
             if((res = write(fd,disc,newsize)) == -1)
             {
@@ -494,7 +508,7 @@ int llclose_receiver(int fd)
             }
             //ativa o alarme
             alarm(data_link.timeout);  
-            alarmOff = 0;
+            retry = 0;
             printf("trama DISC enviada!\n");
             
             ret = receive(fd,msg);

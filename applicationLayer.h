@@ -4,6 +4,7 @@
 #include <termios.h>
 #include <stdio.h>
 #include <string.h>
+#include <libgen.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
@@ -32,7 +33,7 @@ struct package{
 };
 
 static struct applicationLayer infoLayer;
-static unsigned int sequenceNumber = 1;
+static unsigned char sequenceNumber = 1;
 
 int getFileSize(int file_descriptor);
 

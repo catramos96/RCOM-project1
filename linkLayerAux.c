@@ -78,8 +78,8 @@ ReturnType receive(int fd, Message *msg){
                perror("read receiver");
                return ERROR;
            }
-          else if(res == 0){
-            return OK;     //TMP
+           else if(res == 0){
+               return EMPTY;     //TMP
            }
        }
        
@@ -169,12 +169,12 @@ ReturnType receive(int fd, Message *msg){
 
    buf = (unsigned char*)realloc(buf,size);  //realloc para o tamanho certo da trama
 
-   //printf("Receive antedo desstuffing\n");
+   //printf("Receive antedo destuffing\n");
    //display(buf,size);
   
-   int newsize = desstuff(buf,size);   //recebe com stuff, fazemos desstuffing
+   int newsize = destuff(buf,size);   //recebe com stuff, fazemos destuffing
    
-   //printf("Receive depois do desstuffing\n");
+   //printf("Receive depois do destuffing\n");
    //display(buf,newsize); 
   
   //---- Comeca a parte de analise da trama ----//
@@ -346,7 +346,7 @@ return newBufSize;*/
 /**
  * Processo contrario ao stuff
  */
-int desstuff(unsigned char *frame, int frame_length){
+int destuff(unsigned char *frame, int frame_length){
     
     int i;
     for (i = 1; i < (frame_length - 1); i++)
@@ -365,22 +365,22 @@ int desstuff(unsigned char *frame, int frame_length){
     frame = (unsigned char *)realloc(frame, frame_length);
     
     return frame_length;
-    /*
     
+    /*    
     int i;
-	for (i = 1; i < frame_length - 1; ++i) {
-		if ((frame)[i] == ESCAPE) {
-			memmove(frame + i, frame + i + 1, frame_length - i - 1);
+    for (i = 1; i < frame_length - 1; ++i) {
+	if ((frame)[i] == ESCAPE) {
+		memmove(frame + i, frame + i + 1, frame_length - i - 1);
 
-			frame_length--;
+		frame_length--;
 
-			(frame)[i] ^= 0x20;
-		}
+		(frame)[i] ^= 0x20;
 	}
+    }
 
-	frame = (unsigned char*) realloc(frame, frame_length);
+    frame = (unsigned char*) realloc(frame, frame_length);
 
-return frame_length;*/
+    return frame_length;*/
 }
     
     
