@@ -39,7 +39,8 @@ typedef struct
     ControlFieldType type;
     //char isCommand; //ainda nao sei se devo colocar
     unsigned char message[BUF_SIZE];        
-    unsigned int message_size;      
+    unsigned int message_size;    
+    unsigned int isRetransmission;  
 } Message;
 
 /**
@@ -81,4 +82,20 @@ int llclose(int fd, int isReceiver);
 int llclose_receiver(int fd);
 
 int llclose_sender(int fd);
+
+unsigned char* build_frame_SU(ControlFieldType flag);
+
+unsigned char* build_frame_I(unsigned char* data, unsigned int data_length);
+
+ReturnType receive(int fd, Message *msg);
+
+unsigned char getControlField(ControlFieldType flag);
+
+ControlFieldType setControlField(unsigned char c);
+
+int stuff(unsigned char *frame, int frame_length);
+
+int destuff(unsigned char *frame, int frame_length);
+
+void display(unsigned char *frame, int n);
 

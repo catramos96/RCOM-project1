@@ -20,7 +20,7 @@ int main(int argc, char** argv)
     printf("port (Write d for default value): ");
     scanf("%s", port);
 	if( strcmp(port, "d") == 0)				//TMP
-		strcpy(port, "/dev/ttyS1");
+		strcpy(port, "/dev/ttyS0");
 	
     printf("Transmitter (0) / receiver (1): ");
     scanf("%s", status);

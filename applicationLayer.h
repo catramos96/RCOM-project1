@@ -9,7 +9,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <utime.h>
-#include "linkLayerAux.h"
+#include "linkLayer.h"
 
 /*PODE SER ALTERADO*/
 struct applicationLayer {
