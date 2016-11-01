@@ -336,13 +336,19 @@ int receiver(){
   sprintf(path,"%s/%s",infoLayer.file_path,pkg->file_name);
 
   printf("Path:\n");
-  printf("%s\n", infoLayer.file_path);
-  printf("%s\n", pkg->file_name);
+  //printf("%s\n", infoLayer.file_path);
+  //printf("%s\n", pkg->file_name);
   printf("%s\n", path);
 
   //pkg->file_perm
   if((file = open(path, O_APPEND | O_CREAT | O_WRONLY, S_IRWXU | S_IRWXG | S_IRWXO)) == -1){  //FALTAM FLAGS
     perror("Could not create the file in the receiver\n");
+    exit(-1);
+  }
+  
+  if (fchmod(file, pkg->file_perm))
+  {
+    perror("chmod");
     exit(-1);
   }
 
@@ -402,6 +408,10 @@ int receiver(){
   };    
 
   //Checks if the data received has the sama size of the original file
+  int filesize = getFileSize(file);
+  if(filesize != pkg->total_size){
+    printf("File sizes don't match: %d/%d", filesize, pkg->total_size);  
+  }  
   
   if(llclose(infoLayer.fileDescriptor,infoLayer.status) == -1){
     printf("Could not close port\n");
@@ -429,6 +439,7 @@ int initApplicationLayer(unsigned char *port, int status, unsigned char * file_p
     sender();
   }
   else if(status == RECEIVER){
+    data_link.sequenceNumber = 1;
     receiver();
   }
   else{
