@@ -1,7 +1,6 @@
 nós estamos agora na faculdade, podes vir
 
-Se combinarem ir para a feup testar nos pcs do lab avisem-me pff.
-Obg, Filipe
+Ok, estou a ir agora para ai. Até já.
 
 # Relatório #
 
