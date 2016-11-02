@@ -1,7 +1,5 @@
 #include "linkLayer.h"
 
-//volatile int STOP=FALSE;
-
 /**
  * Cria uma trama do tipo S ou U
  */
@@ -40,7 +38,8 @@ unsigned char* build_frame_I(unsigned char* data, unsigned int data_length){
     //data
     int i = 0;
     unsigned char bcc2 = (unsigned char)0x0;
-    for(i = 0; i < data_length; i++){
+    for(i = 0; i < data_length; i++)
+    {
         frame[4+i] = data[i];
         bcc2 ^= frame[4 + i];  //BCC2
     }
@@ -54,8 +53,8 @@ unsigned char* build_frame_I(unsigned char* data, unsigned int data_length){
 /**
  * Recebe uma trama
  */
-ReturnType receive(int fd, Message *msg){
-
+ReturnType receive(int fd, Message *msg)
+{
    unsigned char* buf = (unsigned char *) malloc(BUF_SIZE);
    
    State state = START;
@@ -79,7 +78,7 @@ ReturnType receive(int fd, Message *msg){
                return ERROR;
            }
            else if(res == 0){
-               return EMPTY;     //TMP
+               return EMPTY;
            }
        }
        
@@ -93,7 +92,7 @@ ReturnType receive(int fd, Message *msg){
                }
                break;
            case FLAG_RCV:   //muda de estado se receber um campo de endereco, ou algo diferente da flag
-               if(c == FRAME_A1 || c == FRAME_A3)       //nao esta bem!!!!!!!! temos de ter em conta se é 0x03 ou 0x01 (ainda so funciona para 0x03)
+               if(c == FRAME_A1 || c == FRAME_A3) 
                {
                    buf[size] = c;
                    size++;
@@ -186,20 +185,21 @@ ReturnType receive(int fd, Message *msg){
    {  
        if(msg->controlAdress == FRAME_A1)    return OK;  //erro de cabecalho
        
-       //analisar o sequence number => se recebe igual ao que está guardado e porque ocorreu uma retransmissao
+       //analisar o sequence number => se recebe diferente ao que está guardado e porque ocorreu uma retransmissao
        unsigned int ns = (buf[2]) >> 6;
        if(ns != data_link.sequenceNumber)
        {
            printf("WARNING: ocorreu uma retransmissao\n");
+           
            msg->isRetransmission = 1;
+           
            msg->type = setControlField(buf[2]);    //recebe o controlField antes de mudar o sequenceNumber
        }
        else
        {
             msg->type = setControlField(buf[2]);    //recebe o controlField antes de mudar o sequenceNumber
             
-            if(ns == 0) data_link.sequenceNumber = 1;
-            else data_link.sequenceNumber = 0;
+            data_link.sequenceNumber ^= 1;  //atualiza o sequenceNumber (receiver)
             
             msg->isRetransmission = 0;
         
@@ -207,27 +207,29 @@ ReturnType receive(int fd, Message *msg){
 
             int i;
             unsigned char bcc2 = (unsigned char)0x0;
-            for(i = 0; i < msg->message_size; i++){
-                    bcc2 ^= buf[4+i];
-            }
-
-            if(bcc2 != buf[4+msg->message_size]){
+            for(i = 0; i < msg->message_size; i++)
+                bcc2 ^= buf[4+i];
+            
+            if(bcc2 != buf[4+msg->message_size])
                 return DATAERROR;
-            }
+            
             //colocar a mensagem recebida na struct
             memcpy(msg->message, &buf[4], msg->message_size); //destination, source, num 
        }
-
    }
-   else{
-         //caso tenha recebido RR ou REJ, é necessário mudar o sequenceNumber para o N(r)
+   else
+   {
          msg->type = setControlField(buf[2]);
+         
+         //caso tenha recebido RR ou REJ, é necessário mudar o sequenceNumber para o N(r)
          if(msg->type == RR || msg->type == REJ)
          {
             if(msg->controlAdress == FRAME_A1)  return OK; // erro de cabecalho
             
-            data_link.sequenceNumber = buf[2] >> 7;      //atualizo
+            data_link.sequenceNumber = buf[2] >> 7;      //atualizo no momento que recebo (sender)
          }
+         
+         //tipo SET nao tem frameA = 0x01
          if(msg->type == SET && msg->controlAdress == FRAME_A1) return OK;  //erro de cabecalho
    }
    
@@ -250,23 +252,20 @@ unsigned char getControlField(ControlFieldType flag)
     else if(DISC == flag){
         return FRAME_C_DISC;
     }
-    else if(RR == flag){  // o nr é sempre o oposto do que recebe 
-        /*unsigned char nr = 1;
-        if(data_link.sequenceNumber == 1) nr = 0;   */
+    else if(RR == flag){ 
         return (FRAME_C_RR | (data_link.sequenceNumber << 7));
     }
-    else if(REJ == flag){   //igual para o REJ
-        /*unsigned char nr = 1;
-        if(data_link.sequenceNumber == 1) nr = 0;   */
+    else if(REJ == flag)    //contrucao das tramas rej com a o num sequencia recebido pela trama I. O num sequencia passa para ao oposto para a rececao da nova trama I
+    {
         unsigned char c = FRAME_C_REJ | (data_link.sequenceNumber << 7);
-		data_link.sequenceNumber ^= 1;
-		return c;
+        data_link.sequenceNumber ^= 1;
+        return c;
     }
     else if(I == flag){
         return (data_link.sequenceNumber << 6); //o controlo depende do sequenceNumber
     }
     else
-        printf("ainda nao esta definida\n");
+        printf("Erro no cabecalho a receber a trama\n");
     
 }
 
@@ -291,7 +290,7 @@ ControlFieldType setControlField(unsigned char c){
         return I;
     }
     else
-        printf("%x ainda nao esta definida\n",c);
+        printf("Erro no cabecalho a receber a trama\n");
 }
 
 /**
@@ -331,28 +330,6 @@ int stuff(unsigned char *frame, int frame_length){
     }
     
     return newframe_length;
-   
- /*  int newBufSize = frame_length;
-
-	int i;
-	for (i = 1; i < frame_length - 1; i++)
-		if ((frame)[i] == FLAG || (frame)[i] == ESCAPE)
-			newBufSize++;
-
-	frame = (unsigned char*) realloc(frame, newBufSize);
-
-	for (i = 1; i < frame_length - 1; i++) {
-		if ((frame)[i] == FLAG || (frame)[i] == ESCAPE) {
-			memmove(frame + i + 1, frame + i, frame_length - i);
-
-			frame_length++;
-
-			(frame)[i] = ESCAPE;
-			(frame)[i + 1] ^= 0x20;
-		}
-	}
-
-return newBufSize;*/
 }
 
 /**
@@ -377,22 +354,6 @@ int destuff(unsigned char *frame, int frame_length){
     frame = (unsigned char *)realloc(frame, frame_length);
     
     return frame_length;
-    
-    /*    
-    int i;
-    for (i = 1; i < frame_length - 1; ++i) {
-	if ((frame)[i] == ESCAPE) {
-		memmove(frame + i, frame + i + 1, frame_length - i - 1);
-
-		frame_length--;
-
-		(frame)[i] ^= 0x20;
-	}
-    }
-
-    frame = (unsigned char*) realloc(frame, frame_length);
-
-    return frame_length;*/
 }
     
     

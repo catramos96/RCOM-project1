@@ -214,8 +214,8 @@ int llopen_sender(int fd)
 * @param length  comprimento do array de caracteres 
 * @return número de caracteres escritos ; valor negativo em caso de erro
 */
-int llwrite(int fd, unsigned char * buffer, int length){
-    
+int llwrite(int fd, unsigned char * buffer, int length)
+{
     (void) signal(SIGALRM, handler);  // instala  rotina que atende interrupcao
     int tries = 0;
     int n_written = 0;
@@ -281,10 +281,6 @@ int llwrite(int fd, unsigned char * buffer, int length){
                 
                 printf("Trama REJ recebida\n");
             }
-            else 
-            {
-                printf("Erro no cabecalho da trama RR/REJ\n");
-            }
         }
     }
     
@@ -299,8 +295,8 @@ int llwrite(int fd, unsigned char * buffer, int length){
 * @param buffer array de caracteres recebidos 
 * @return comprimento do array (número de caracteres lidos) ; valor negativo em caso de erro
 */
-int llread(int fd, unsigned char * buffer){
-
+int llread(int fd, unsigned char * buffer)
+{
     int res;
     unsigned char *frame = NULL;
     int done = 0;
