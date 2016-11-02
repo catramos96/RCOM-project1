@@ -64,6 +64,20 @@ typedef enum {
 
 static dataLink data_link;
 
+typedef struct
+{
+	unsigned int tramasIenviadas;
+	unsigned int tramasIretransmitidas;
+	unsigned int tramasIrecebidas;
+	unsigned int timeouts;
+	unsigned int REJenviados;
+	unsigned int REJrecebidos;
+}estatisticas;
+
+estatisticas statistics;
+
+
+
 //METODOS
 
 void init_linkLayer(unsigned char *port);
