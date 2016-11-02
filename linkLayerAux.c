@@ -5,13 +5,13 @@
 /**
  * Cria uma trama do tipo S ou U
  */
-unsigned char* build_frame_SU(ControlFieldType flag)      
+unsigned char* build_frame_SU(ControlFieldType flag, unsigned char flag_A)      
 {
     unsigned char *frame = NULL;
     frame = (unsigned char *) malloc(FRAME_SIZE);
  
     frame[0] = FLAG;    
-    frame[1] = FRAME_A;
+    frame[1] = flag_A;
     frame[2] = getControlField(flag);
     frame[3] = (frame[1] ^ frame[2]);
     frame[4] = FLAG;
@@ -33,7 +33,7 @@ unsigned char* build_frame_I(unsigned char* data, unsigned int data_length){
     frame = (unsigned char *) malloc(total);
     
     frame[0] = FLAG;    
-    frame[1] = FRAME_A;
+    frame[1] = FRAME_A3;    //o camando I e sempre 0x03
     frame[2] = (data_link.sequenceNumber << 6);
     frame[3] = (frame[1] ^ frame[2]);
     
@@ -93,7 +93,7 @@ ReturnType receive(int fd, Message *msg){
                }
                break;
            case FLAG_RCV:   //muda de estado se receber um campo de endereco, ou algo diferente da flag
-               if(c == FRAME_A)       //nao esta bem!!!!!!!! temos de ter em conta se é 0x03 ou 0x01 (ainda so funciona para 0x03)
+               if(c == FRAME_A1 || c == FRAME_A3)       //nao esta bem!!!!!!!! temos de ter em conta se é 0x03 ou 0x01 (ainda so funciona para 0x03)
                {
                    buf[size] = c;
                    size++;
@@ -177,43 +177,46 @@ ReturnType receive(int fd, Message *msg){
    //printf("Receive depois do destuffing\n");
    //display(buf,newsize); 
   
-  //---- Comeca a parte de analise da trama ----//
+   //---- Comeca a parte de analise da trama ----//
    
-
+   msg->controlAdress = buf[1];
+   
    //trama do tipo I
    if(hasData)
    {  
+       if(msg->controlAdress == FRAME_A1)    return OK;  //erro de cabecalho
+       
        //analisar o sequence number => se recebe igual ao que está guardado e porque ocorreu uma retransmissao
        unsigned int ns = (buf[2]) >> 6;
        if(ns != data_link.sequenceNumber)
        {
            printf("WARNING: ocorreu uma retransmissao\n");
            msg->isRetransmission = 1;
-        msg->type = setControlField(buf[2]);    //recebe o controlField antes de mudar o sequenceNumber
+           msg->type = setControlField(buf[2]);    //recebe o controlField antes de mudar o sequenceNumber
        }
        else
        {
-        msg->type = setControlField(buf[2]);    //recebe o controlField antes de mudar o sequenceNumber
-       		if(ns == 0) data_link.sequenceNumber = 1;
-       		else data_link.sequenceNumber = 0;
-       		
-       		msg->isRetransmission = 0;
+            msg->type = setControlField(buf[2]);    //recebe o controlField antes de mudar o sequenceNumber
+            
+            if(ns == 0) data_link.sequenceNumber = 1;
+            else data_link.sequenceNumber = 0;
+            
+            msg->isRetransmission = 0;
         
-      		msg->message_size = newsize - FRAME_SIZE - 1; //-1 por causa da proteção dupla	
+            msg->message_size = newsize - FRAME_SIZE - 1; //-1 por causa da proteção dupla	
 
-      		int i;
-       		unsigned char bcc2 = (unsigned char)0x0;
-       		for(i = 0; i < msg->message_size; i++){
-           		bcc2 ^= buf[4+i];
-       		}
+            int i;
+            unsigned char bcc2 = (unsigned char)0x0;
+            for(i = 0; i < msg->message_size; i++){
+                    bcc2 ^= buf[4+i];
+            }
 
-      		if(bcc2 != buf[4+msg->message_size]){
-          		 return DATAERROR;
-      		}
-        	//colocar a mensagem recebida na struct
-       		memcpy(msg->message, &buf[4], msg->message_size); //destination, source, num 
-        }
-        
+            if(bcc2 != buf[4+msg->message_size]){
+                return DATAERROR;
+            }
+            //colocar a mensagem recebida na struct
+            memcpy(msg->message, &buf[4], msg->message_size); //destination, source, num 
+       }
 
    }
    else{
@@ -221,9 +224,11 @@ ReturnType receive(int fd, Message *msg){
          msg->type = setControlField(buf[2]);
          if(msg->type == RR || msg->type == REJ)
          {
-            //int nr = buf[2] >> 7;
+            if(msg->controlAdress == FRAME_A1)  return OK; // erro de cabecalho
+            
             data_link.sequenceNumber = buf[2] >> 7;      //atualizo
          }
+         if(msg->type == SET && msg->controlAdress == FRAME_A1) return OK;  //erro de cabecalho
    }
    
    free(buf);   //liberta o espaco em memoria

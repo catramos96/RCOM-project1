@@ -12,8 +12,8 @@
 #define ESCAPE (unsigned char)0x7D	//escape flag
 #define AUX (unsigned char)0x20  	//escape flag
 
-#define FRAME_A (unsigned char)0x03	//campo de endereco 
-#define FRAME_A2 (unsigned char)0x01	//campo de endereco 
+#define FRAME_A1 (unsigned char)0x01	//campo de endereco 
+#define FRAME_A3 (unsigned char)0x03	//campo de endereco 
 
 #define FRAME_C_UA (unsigned char)0x07 	//Campo de controlo para trama UA
 #define FRAME_C_SET (unsigned char)0x03 	//Campo de controlo para a trama SET

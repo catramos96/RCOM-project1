@@ -108,7 +108,7 @@ int llopen_receiver(int fd)
         free(msg);  //liberta a mensagem
 
 	//criacao da trama UA
-	unsigned char *ua = build_frame_SU(UA);
+	unsigned char *ua = build_frame_SU(UA,FRAME_A3);
 
 	/*printf("llopen_receiver UA antes do stuffing\n");
 	display(ua, FRAME_SIZE);*/
@@ -138,7 +138,7 @@ int llopen_sender(int fd)
     printf("SENDER\n");
 
     //criacao da trama SET
-    unsigned char *set = build_frame_SU(SET);
+    unsigned char *set = build_frame_SU(SET,FRAME_A3);
 	
     /*printf("llopen_sender SET antes do sfuffing\n");
     display(set, FRAME_SIZE);*/
@@ -180,23 +180,33 @@ int llopen_sender(int fd)
         
         if(ret != EMPTY)
         {
-          if(ret == ERROR)
-            return -1;
+          if(ret == ERROR)  return -1;
           else
           {
             //verifica o tipo da mensagem
-            if(msg->type == UA){
-              done = 1;
-              free(set); // liberta a memoria da trama criada
-              printf("trama UA recebida!\n");
+            if(msg->type == UA)
+            {
+                printf("%d\n",msg->controlAdress);
+                if(msg->controlAdress == 3)
+                {
+                    done = 1;
+                    free(set); // liberta a memoria da trama criada
+                    printf("trama UA recebida!\n");
+                }
+                /*else
+                {
+                    retry = 1;
+                    printf("Erro no cabecalho da trama UA\n");
+                }*/
             }
-            else{
+            /*else
+            {
               printf("Erro no cabecalho\n");
-              return -1;
-            }
+            }*/
           }
         }
     }
+    
     free(msg);
     return 0;
 }
@@ -311,32 +321,27 @@ int llread(int fd, unsigned char * buffer){
             return -1;
         }     
         else if(ret == DATAERROR){
-            frame = build_frame_SU(REJ);   // constroi a trama REJ se erros nos dados
+            frame = build_frame_SU(REJ,FRAME_A3);   // constroi a trama REJ se erros nos dados
             printf("DATA ERROR !\n");
             send = 1;
         }
         else
-        {        	
+        { 
             if(msg->type == I)
             {
-            	if(!msg->isRetransmission){
-                	memcpy(buffer, &msg->message,msg->message_size);//destination, source, num B
-					done = 1;
-				}
-				
-               
-           		frame = build_frame_SU(RR);  //criacao da trama RR
+                if(!msg->isRetransmission)
+                {
+                    memcpy(buffer, &msg->message,msg->message_size);//destination, source, num B
+                    done = 1;
+                }
+                
+                frame = build_frame_SU(RR,FRAME_A3);  //criacao da trama RR
                 printf("Trama I recebida (%d)!\n", data_link.sequenceNumber);  //caso de sucesso
                 
                 send = 1;
             }
-            /*else{
-                printf("Espera!\n");  //caso de sucesso
-            }*/
         }
-
-        
-    		
+	
         /*printf("llread RR antes do sfuffing\n");
         display(rr,FRAME_SIZE);*/
     	if(send){
@@ -351,7 +356,6 @@ int llread(int fd, unsigned char * buffer){
                 perror("write llread");
                 return -1;
             }
-
             else{
                 printf("Trama RR/REJ enviada!\n");
             }
@@ -360,7 +364,7 @@ int llread(int fd, unsigned char * buffer){
     
     }
     free(msg);
-	alarm(0);
+    alarm(0);
     return 0;
 }
 
@@ -396,7 +400,7 @@ int llclose_sender(int fd)
     
     Message* msg = (Message*)malloc(sizeof(Message));
 	
-    unsigned char* disc = build_frame_SU(DISC);
+    unsigned char* disc = build_frame_SU(DISC,FRAME_A3);
 	
    /* printf("llclose_sender DISC antes do sfuffing\n");
     display(disc, FRAME_SIZE);*/
@@ -432,21 +436,25 @@ int llclose_sender(int fd)
         if(ret == ERROR)    return 1;
 	else
         {
-            if(msg->type == DISC){
-                done = 1;
-                free(disc); // liberta a memoria
-                printf("Trama DISC recebida!\n");
+            if(msg->type == DISC)
+            {
+                if(msg->controlAdress == 1)
+                {
+                    done = 1;
+                    free(disc); // liberta a memoria
+                    printf("Trama DISC recebida!\n");
+                }
             }
-            else{
+           /* else{
                 printf("Erro no cabecalho\n");
                 return 1;
-            }
+            }*/
         }
     }
     
     free(msg);
         
-    unsigned char* ua = build_frame_SU(UA);
+    unsigned char* ua = build_frame_SU(UA,FRAME_A1);
 	
     /*printf("llclose_sender UA antes do sfuffing\n");
     display(ua, FRAME_SIZE);*/
@@ -474,7 +482,7 @@ int llclose_receiver(int fd)
     
     Message* msg = (Message*)malloc(sizeof(Message));
 	
-    unsigned char* disc = build_frame_SU(DISC);
+    unsigned char* disc = build_frame_SU(DISC,FRAME_A1);
 	
     /*printf("llclose_receiver DISC antes do sfuffing\n");
     display(disc, FRAME_SIZE);*/
@@ -498,14 +506,18 @@ int llclose_receiver(int fd)
             if(ret == ERROR)    return -1;
             else
             {
-                if(msg->type == DISC){
-                    tries++;
-                    printf("Trama DISC recebida!\n");          
+                if(msg->type == DISC)
+                {
+                    if(msg->controlAdress == 3)
+                    {
+                        tries++;
+                        printf("Trama DISC recebida!\n");  
+                    }
                 }
-                else{
+              /*  else{
                     printf("Erro no cabecalho\n");
                     return -1;
-                }
+                }*/
             }
         }
         if(tries == 1 || retry) //só envia a trama se : for a primeira tentativa ou o alarme disparar
@@ -521,11 +533,21 @@ int llclose_receiver(int fd)
             printf("trama DISC enviada!\n");
             
             ret = receive(fd,msg);
-            if(ret == OK){
-                if(msg->type == UA){
-                    free(disc);
-                    done = 1;
-                    printf("trama UA recebida\n");
+            if(ret == OK)
+            {
+                if(msg->type == UA)
+                {
+                    if(msg->controlAdress == 1)
+                    {
+                        free(disc);
+                        done = 1;
+                        printf("trama UA recebida\n");
+                    }
+                   /* else
+                    {
+                        retŕy = 1;
+                        printf("Erro no cabecalho da trama UA\n");
+                    }*/
                 }
             }
         }

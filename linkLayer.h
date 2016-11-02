@@ -41,6 +41,7 @@ typedef struct
     unsigned char message[BUF_SIZE];        
     unsigned int message_size;    
     unsigned int isRetransmission;  
+    unsigned int controlAdress; //so pode ser 1 ou 3
 } Message;
 
 /**
@@ -83,7 +84,7 @@ int llclose_receiver(int fd);
 
 int llclose_sender(int fd);
 
-unsigned char* build_frame_SU(ControlFieldType flag);
+unsigned char* build_frame_SU(ControlFieldType flag, unsigned char flag_A);
 
 unsigned char* build_frame_I(unsigned char* data, unsigned int data_length);
 
