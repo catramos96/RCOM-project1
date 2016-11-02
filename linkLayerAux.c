@@ -191,7 +191,8 @@ ReturnType receive(int fd, Message *msg){
        if(ns != data_link.sequenceNumber)
        {
            printf("WARNING: ocorreu uma retransmissao\n");
-           msg->isRetransmission = 1;
+           statistics.tramasIretransmitidas++;
+		   msg->isRetransmission = 1;
            msg->type = setControlField(buf[2]);    //recebe o controlField antes de mudar o sequenceNumber
        }
        else

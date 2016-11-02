@@ -8,6 +8,15 @@
  */
 int main(int argc, char** argv)
 {
+	
+//inicializar struct estatisticas	
+statistics.tramasIenviadas=0;
+statistics.tramasIretransmitidas=0;
+statistics.tramasIrecebidas=0;
+statistics.timeouts=0;
+statistics.REJenviados=0;
+statistics.REJrecebidos=0;
+	
    ///testar application applicationLayer
     if(argc != 1)
     {
@@ -123,5 +132,14 @@ int main(int argc, char** argv)
     for(i = 0; i < newsize; i++){
         printf("%c\n",info[i]);
     }*/
+	
+	printf("Number of I frames sent: %d\n",statistics.tramasIenviadas);
+	printf("Number of I frames retransmissioned: %d\n",statistics.tramasIretransmitidas);
+	printf("Number of I frames received: %d\n",statistics.tramasIrecebidas);
+	printf("Number of timeouts: %d\n",statistics.timeouts);
+	printf("Number of REJ frames sent: %d\n",statistics.REJenviados);
+	printf("Number of REJ frames received: %d\n",statistics.REJrecebidos);
+	
+	
     return 0;
 }

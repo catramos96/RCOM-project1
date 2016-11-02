@@ -18,6 +18,7 @@ void init_linkLayer(unsigned char* port)
 void handler()
 {
     printf("TIMEOUT\n");
+	statistics.timeouts++;
     retry = 1;
 }
 
@@ -258,6 +259,7 @@ int llwrite(int fd, unsigned char * buffer, int length){
             tries++;
             
             printf("Trama I enviada !\n");
+			statistics.tramasIenviadas++;
         }
         
         //Verificar e receber a trama RR OU REJ com Nr = 1
@@ -280,6 +282,7 @@ int llwrite(int fd, unsigned char * buffer, int length){
                 retry = 1;
                 
                 printf("Trama REJ recebida\n");
+				statistics.REJrecebidos++;
             }
             else 
             {
@@ -319,7 +322,7 @@ int llread(int fd, unsigned char * buffer){
         {
             frame = build_frame_SU(REJ,FRAME_A3);   // constroi a trama REJ se erros nos dados
             send = 1;
-            
+            statistics.REJenviados++;
             printf("Data error receiving frame I (bcc2) !\n");
         }
         else if(ret == OK)
@@ -336,6 +339,7 @@ int llread(int fd, unsigned char * buffer){
                 send = 1;
                 
                 printf("Trama I recebida!\n");  //caso de sucesso
+				statistics.tramasIrecebidas++;
             }
         }
 	
