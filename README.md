@@ -16,34 +16,28 @@ o trabalho está divido em camadas:
 
 * **link Layer** : llopen, llwrite, llread, llclose (fazem a ligação com o application Layer)
 
-# O que está feito  #
-
-* llopen, llwrite, llread e llclose(faltam uns testes)
-
-* byte stuffing
-
-* stop-n-wait
-
 # TODO list #
 
-**Link Layer** (responsável -> Inês)
+* estatisticas
 
-* seq number do link layer do receiver devia começar em 1 senão a primeira trama I recebida dá um warning de retransmissão
+* temporizador para o receiver parar em caso de erro
 
-* retransmissões detectadas que tenham sido recebidas previamente com sucesso devem ser ignoradas (enviar apenas resposta)
+* problema do TIMEOUT no fim
 
-* receiver fica indefinidamente a enviar a trama DISC - descobrir erro
+* geracao aleatoria de erros
 
+* recuperacao em casos de erros (?)
 
-* descobrir o erro do bbc2
+// para depois
 
-* colocar o stuffing para tudo
+* comentarios
 
-* ler o ppt para ver se não falta nenhum pormenor
+* documentacao
 
-* testar mais exaustivamente (ver mesmo o conteudo das tramas de um lado para o outro
+* organizacao de codigo
 
-* testar as cenas do n e r (embora isto esteja mais relacionada com o applicationLayer, convém ter a certeza que funciona)
+**Link Layer** 
+
 
 **application Layer**
 
