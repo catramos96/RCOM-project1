@@ -41,6 +41,7 @@ typedef struct
     unsigned char message[BUF_SIZE];        
     unsigned int message_size;    
     unsigned int isRetransmission;  
+    unsigned int controlAdress; //so pode ser 1 ou 3
 } Message;
 
 /**
@@ -63,6 +64,20 @@ typedef enum {
 
 static dataLink data_link;
 
+typedef struct
+{
+	unsigned int tramasIenviadas;
+	unsigned int tramasIretransmitidas;
+	unsigned int tramasIrecebidas;
+	unsigned int timeouts;
+	unsigned int REJenviados;
+	unsigned int REJrecebidos;
+}estatisticas;
+
+estatisticas statistics;
+
+
+
 //METODOS
 
 void init_linkLayer(unsigned char *port);
@@ -83,7 +98,7 @@ int llclose_receiver(int fd);
 
 int llclose_sender(int fd);
 
-unsigned char* build_frame_SU(ControlFieldType flag);
+unsigned char* build_frame_SU(ControlFieldType flag, unsigned char flag_A);
 
 unsigned char* build_frame_I(unsigned char* data, unsigned int data_length);
 

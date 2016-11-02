@@ -8,6 +8,15 @@
  */
 int main(int argc, char** argv)
 {
+	
+//inicializar struct estatisticas	
+statistics.tramasIenviadas=0;
+statistics.tramasIretransmitidas=0;
+statistics.tramasIrecebidas=0;
+statistics.timeouts=0;
+statistics.REJenviados=0;
+statistics.REJrecebidos=0;
+	
    ///testar application applicationLayer
     if(argc != 1)
     {
@@ -15,18 +24,20 @@ int main(int argc, char** argv)
         exit(1);
     }
     
-    char port[20], status[5], path[128];
+    char port[20], status[2], mode[2], path[128];
 	
-    printf("port (Write d for default value): ");
+    printf("\nPORT:\n  /dev/ttyS0\n  /dev/ttyS1\n");
     scanf("%s", port);
-	if( strcmp(port, "d") == 0)				//TMP
-		strcpy(port, "/dev/ttyS0");
 	
-    printf("Transmitter (0) / receiver (1): ");
+    printf("\nSTATUS:\n  Transmitter (0)\n  Receiver (1)\n");
     scanf("%s", status);
+
+    printf("\nMODE:\n  Normal (0)\n  Simple Debug (1)\n  Full Debug(3)\n");
+    scanf("%s", mode);
 	
-    printf("File path: ");
+    printf("\nPATH:\n  Receiver - Path to keep the fille\n  Transmitter - Path of the file to be sent\n");
     scanf("%s",path);
+    printf("\n\n");
 	
 /*
         printf("Baud rate (Write 0 for default value): ");
@@ -45,7 +56,7 @@ int main(int argc, char** argv)
 	printf("Timeout: ");
 	scanf("%d",TIMEOUT);	
 */	
-    initApplicationLayer(port,atoi(status),path);
+    initApplicationLayer(port,atoi(status),atoi(mode),path);
     
     /**
      * application Layer
@@ -121,5 +132,14 @@ int main(int argc, char** argv)
     for(i = 0; i < newsize; i++){
         printf("%c\n",info[i]);
     }*/
+	
+	printf("Number of I frames sent: %d\n",statistics.tramasIenviadas);
+	printf("Number of I frames retransmissioned: %d\n",statistics.tramasIretransmitidas);
+	printf("Number of I frames received: %d\n",statistics.tramasIrecebidas);
+	printf("Number of timeouts: %d\n",statistics.timeouts);
+	printf("Number of REJ frames sent: %d\n",statistics.REJenviados);
+	printf("Number of REJ frames received: %d\n",statistics.REJrecebidos);
+	
+	
     return 0;
 }
