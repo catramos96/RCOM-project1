@@ -54,27 +54,30 @@ int sendStartPackage(unsigned char * file_name, unsigned char * file_size, unsig
 
   pkg[i] = PKG_START;
 
-  //printf("Type - %x\n",pkg[0]);               //DEBUG
-
   i++;
 
   pkg[i] = FILE_SIZE;
   pkg[i+1] = strlen(file_size);
   memcpy(pkg+i+2,file_size,strlen(file_size));
 
-  /*printf("SizeT - %x\n",pkg[i]);                //DEBUG
-  printf("SizeL - %x\n",pkg[i+1]);
-  printf("SizeV - %s\n",pkg + i + 2);*/
-
+  if(infoLayer.mode == SIMPLE_DEBUG || infoLayer.mode == FULL_DEBUG){
+      printf("Type - %x\n",pkg[0]);
+      printf("SizeT - %x\n",pkg[i]);             
+      printf("SizeL - %x\n",pkg[i+1]);
+      printf("SizeV - %s\n",pkg + i + 2);
+  }
+  
   i += 2 + strlen(file_size);
 
   pkg[i] = FILE_NAME;
   pkg[i+1] = strlen(file_name);
   memcpy(pkg+i+2,file_name,strlen(file_name));
 
-  /*printf("NameT - %x\n",pkg[i]);                //DEBUG
-  printf("NameL - %u\n",pkg[i+1]);
-  printf("NameV - %s\n",pkg + i + 2);*/
+  if(infoLayer.mode == SIMPLE_DEBUG || infoLayer.mode == FULL_DEBUG){
+      printf("NameT - %x\n",pkg[i]);             
+      printf("NameL - %u\n",pkg[i+1]);
+      printf("NameV - %s\n",pkg + i + 2);
+  }
 
   i += 2 + strlen(file_name);
 
@@ -82,9 +85,11 @@ int sendStartPackage(unsigned char * file_name, unsigned char * file_size, unsig
   pkg[i+1] = strlen(file_date);
   memcpy(pkg+i+2,file_date,strlen(file_date));
 
-  /*printf("DateT - %x\n",pkg[i]);                //DEBUG
-  printf("DateL - %x\n",pkg[i+1]);
-  printf("DateV - %s\n",pkg + i + 2);*/
+  if(infoLayer.mode == SIMPLE_DEBUG || infoLayer.mode == FULL_DEBUG){
+      printf("DateT - %x\n",pkg[i]);             
+      printf("DateL - %x\n",pkg[i+1]);
+      printf("DateV - %s\n",pkg + i + 2);
+  }
 
   i += 2 + strlen(file_date);
 
@@ -92,12 +97,16 @@ int sendStartPackage(unsigned char * file_name, unsigned char * file_size, unsig
   pkg[i+1] = strlen(file_perm);
   memcpy(pkg + i + 2,file_perm,strlen(file_perm));
 
-  /*printf("PermT - %x\n",pkg[i]);                //DEBUG
-  printf("PermL - %x\n",pkg[i+1]);
-  printf("PermV - %s\n",pkg + i + 2);*/
-
-  /*printf("Pacote %s\n LENGTH %d\n\n",pkg,buffer_size);*/
-
+  if(infoLayer.mode == SIMPLE_DEBUG || infoLayer.mode == FULL_DEBUG){
+      printf("PermT - %x\n",pkg[i]);               
+      printf("PermL - %x\n",pkg[i+1]);
+      printf("PermV - %s\n",pkg + i + 2);
+  }
+  
+  if(infoLayer.mode == FULL_DEBUG){
+      printf("Pacote %s\n LENGTH %d\n\n",pkg,buffer_size);
+  }
+  
   if(llwrite(infoLayer.fileDescriptor,pkg,buffer_size) == -1){
     return -1;
   }
@@ -110,6 +119,10 @@ int sendEndPackage()
 {
   unsigned char pkg[1];
   pkg[0] = PKG_END;
+
+  if(infoLayer.mode == SIMPLE_DEBUG || infoLayer.mode == FULL_DEBUG){
+      printf("Type - %x\n",pkg[0]);
+  }
   
   if(llwrite(infoLayer.fileDescriptor, pkg, 1) == -1){
     return -1;
@@ -130,11 +143,16 @@ int sendDataPackage(unsigned char * data,unsigned int size)
   pkg[3] = size-DATA_SIZE*pkg[2];             //L1    SizeT = L2*DataSize + L1
   memcpy(pkg + 4,data,size);
 
-  /*printf("Type - %x\n",pkg[0]);         //DEBUG
-  printf("Number - %x\n",pkg[1]);
-  printf("Total Size - %d\n",pkg[2]*DATA_SIZE + pkg[3]);
-  printf("SIZE - %d\n",size);
-  printf("DATA - \n%s\n\n",pkg+4);*/
+  if(infoLayer.mode == SIMPLE_DEBUG || infoLayer.mode == FULL_DEBUG){
+      printf("Type - %x\n",pkg[0]);        
+      printf("Number - %x\n",pkg[1]);
+      printf("Total Size - %d\n",pkg[2]*DATA_SIZE + pkg[3]);
+      printf("SIZE - %d\n",size);
+  }
+
+  if(infoLayer.mode == FULL_DEBUG){
+      printf("DATA - \n%s\n\n",pkg+4);
+  }
 
   if(llwrite(infoLayer.fileDescriptor,pkg,buffer_size) == -1){
      return -1;
@@ -187,12 +205,14 @@ int receiveStartPackage(struct package *p, unsigned char * data)
   n_bytes = data[i++];
   memcpy(tmp,data + i,n_bytes);
   p->file_perm = atoi(tmp);
-    
-  /*printf("Type - %d\n",p->type);        //DEBUG
-  printf("Size - %d\n",p->total_size);     
-  printf("Name - %s\n",p->file_name);
-  printf("Date - %d\n",p->file_date);
-  printf("Perm - 0x%X\n",p->file_perm);*/
+  
+  if(infoLayer.mode == SIMPLE_DEBUG || infoLayer.mode == FULL_DEBUG){
+      printf("Type - %d\n",p->type);     
+      printf("Size - %d\n",p->total_size);     
+      printf("Name - %s\n",p->file_name);
+      printf("Date - %d\n",p->file_date);
+      printf("Perm - 0x%X\n",p->file_perm);
+  }
 
   return 0;
 }
@@ -211,14 +231,19 @@ int receiveDataPackage(struct package *p, unsigned char * data)
    
   memcpy(p->data,data + i,p->size);
 
-  /*printf("Type - %d\n", p->type);             //DEBUG
-  printf("SNumber - %d\n",p->number);
-  printf("Size - %d\n",p->size);
-  printf("DATA - %s\n",p->data);
-  for( i = 0 ; i < p->size ; i++){
-    printf("%c",p->data[i]);
+  if(infoLayer.mode == SIMPLE_DEBUG || infoLayer.mode == FULL_DEBUG){
+      printf("Type - %d\n", p->type);      
+      printf("SNumber - %d\n",p->number);
+      printf("Size - %d\n",p->size);
+      
   }
-  printf("\n");*/
+  if(infoLayer.mode == FULL_DEBUG){
+      printf("DATA - %s\n",p->data);
+      for( i = 0 ; i < p->size ; i++){
+        printf("%c",p->data[i]);
+      }
+      printf("\n");
+  }
 
   return 0;
 }
@@ -234,7 +259,6 @@ int receivePackage(struct package *p)
   }
 
   p->type = data[0];
-  //printf("Type - %d\n",data[0]);
 
   if(p->type == PKG_START){
     if(receiveStartPackage(p,data) == -1){
@@ -275,9 +299,7 @@ int file;
   }
 
   unsigned char *file_name = basename(infoLayer.file_path);
-
   unsigned char file_size[16], file_date[16], file_perm[16];
-
   int size = getFileSize(file);
 
   sprintf(file_size,"%d",size);
@@ -307,7 +329,10 @@ int file;
     sequenceNumber++;
     memset(data,0,DATA_SIZE);
     written+=r;
-    loadingBar(written,size);
+
+    if(infoLayer.mode == NORMAL){
+      loadingBar(written,size);
+    } 
   }
 
   free(data);
@@ -327,8 +352,11 @@ int file;
     printf("Could not close port\n");
     exit(-1);
   }
-  printf("\nFile sent!\n");
-      
+
+  if(infoLayer.mode == NORMAL){
+      printf("\nFile sent!\n");
+    } 
+
   return 0;
 }
 
@@ -348,12 +376,6 @@ int receiver(){
   unsigned char path[128];
   sprintf(path,"%s/%s",infoLayer.file_path,pkg->file_name);
 
-  /*printf("Path:\n");                //DEBUG
-  printf("%s\n", infoLayer.file_path);
-  printf("%s\n", pkg->file_name);
-  printf("%s\n", path);*/
-
-  //pkg->file_perm
   if((file = open(path, O_APPEND | O_CREAT | O_WRONLY | O_EXCL, S_IRWXU | S_IRWXG | S_IRWXO)) == -1){  //FALTAM FLAGS
     perror("Could not create the file in the receiver\n");
     exit(-1);
@@ -375,11 +397,11 @@ int receiver(){
   new_times.modtime = pkg->file_date;    
   utime(path, &new_times);
 
-  
-  /*
-  printf("Permissions - %lu - %d\n",st.st_mode,pkg->file_perm);   //DEBUG
-  printf("Date - %lu - %d\n",st.st_mtime,pkg->file_date);
-  */
+  if(infoLayer.mode == SIMPLE_DEBUG || infoLayer.mode == FULL_DEBUG){
+      printf("Permissions - %lu - %d\n",st.st_mode,pkg->file_perm); 
+      printf("Date - %lu - %d\n",st.st_mtime,pkg->file_date);
+  }
+
 
   int written = 0;        //written per package
   int data_received = 0;    //written in the final
@@ -420,8 +442,11 @@ int receiver(){
       }
     }while(written < pkg->size);
 
-    data_received += written;     //confirmar com package end 
-    loadingBar(data_received,pkg->total_size);    
+    data_received += written;     //confirmar com package end
+    
+    if(infoLayer.mode == NORMAL){
+      loadingBar(data_received,pkg->total_size);
+    } 
   };    
 
   //Checks if the data received has the sama size of the original file
@@ -437,12 +462,16 @@ int receiver(){
   free(pkg);
   close(file);
 
-  printf("\nFile received!\n");
+  if(infoLayer.mode == NORMAL){
+      printf("\nFile received!\n");
+  } 
+  
   return 0;
 }
 
-int initApplicationLayer(unsigned char *port, int status, unsigned char * file_path){
+int initApplicationLayer(unsigned char *port, int status, int mode,unsigned char * file_path){
   infoLayer.status = status;
+  infoLayer.mode = mode;
   memcpy(infoLayer.file_path, file_path, strlen(file_path));
 
   //inicializa o dataLink
@@ -452,6 +481,7 @@ int initApplicationLayer(unsigned char *port, int status, unsigned char * file_p
     printf("Could not open connection with the receiver\n");
     exit(-1);
   }
+
 
   if(status == TRANSMITTER){
     sender();

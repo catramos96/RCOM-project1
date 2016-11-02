@@ -15,18 +15,20 @@ int main(int argc, char** argv)
         exit(1);
     }
     
-    char port[20], status[5], path[128];
+    char port[20], status[2], mode[2], path[128];
 	
-    printf("port (Write d for default value): ");
+    printf("\nPORT:\n  /dev/ttyS0\n  /dev/ttyS1\n");
     scanf("%s", port);
-	if( strcmp(port, "d") == 0)				//TMP
-		strcpy(port, "/dev/ttyS0");
 	
-    printf("Transmitter (0) / receiver (1): ");
+    printf("\nSTATUS:\n  Transmitter (0)\n  Receiver (1)\n");
     scanf("%s", status);
+
+    printf("\nMODE:\n  Normal (0)\n  Simple Debug (1)\n  Full Debug(3)\n");
+    scanf("%s", mode);
 	
-    printf("File path: ");
+    printf("\nPATH:\n  Receiver - Path to keep the fille\n  Transmitter - Path of the file to be sent\n");
     scanf("%s",path);
+    printf("\n\n");
 	
 /*
         printf("Baud rate (Write 0 for default value): ");
@@ -45,7 +47,7 @@ int main(int argc, char** argv)
 	printf("Timeout: ");
 	scanf("%d",TIMEOUT);	
 */	
-    initApplicationLayer(port,atoi(status),path);
+    initApplicationLayer(port,atoi(status),atoi(mode),path);
     
     /**
      * application Layer

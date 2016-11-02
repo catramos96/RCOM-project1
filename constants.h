@@ -22,20 +22,24 @@
 #define FRAME_C_RR (unsigned char)0x05	//campo de controlo para trama RR
 #define FRAME_C_REJ (unsigned char)0x01	//campo de controlo para trama REJ
 
-#define	FILE_SIZE	1
-#define FILE_NAME	2
-#define	FILE_DATE	3
-#define	FILE_PERM	4
+#define	FILE_SIZE		1
+#define FILE_NAME		2
+#define	FILE_DATE		3
+#define	FILE_PERM		4
 
-#define	PKG_DATA	1
-#define	PKG_START	2
-#define PKG_END		3
+#define	PKG_DATA		1
+#define	PKG_START		2
+#define PKG_END			3
 
 #define DATA_SIZE 		114
 #define MAX_PKG_SIZE	124
 
 #define RECEIVER		1
 #define TRANSMITTER		0
+
+#define NORMAL			0
+#define SIMPLE_DEBUG	1
+#define FULL_DEBUG		2
 
 static int BAUDRATE =  B9600;  
 static unsigned int RETRANSMITIONS = 3; 

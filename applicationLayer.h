@@ -15,6 +15,7 @@
 struct applicationLayer {
 	int fileDescriptor;  /*Descritor correspondente à porta série*/
 	int status; 		 /*TRANSMITTER | RECEIVER*/
+	int mode;			 /*NORMAL | SIMPLE_DEBUG | FULL DEBUG*/
 	unsigned char file_path[128]; /*TRANSMITTER - path of the file to send
 						   RECEIVER - path where the file will be saved*/
 };
@@ -51,4 +52,4 @@ int sender();
 
 int receiver();
 
-int initApplicationLayer(unsigned char * port,int status, unsigned char * file_path);
+int initApplicationLayer(unsigned char * port,int status, int mode,unsigned char * file_path);
