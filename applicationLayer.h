@@ -33,8 +33,6 @@ struct package{
 	int file_perm;
 };
 
-static struct applicationLayer infoLayer;
-static unsigned char sequenceNumber = 1;
 
 int getFileSize(int file_descriptor);
 

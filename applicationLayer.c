@@ -1,5 +1,7 @@
 #include "applicationLayer.h"
 
+static unsigned char sequenceNumber = 1;
+static struct applicationLayer infoLayer;
 
 int getFileSize(int file_descriptor){
   int size = 0, current_pos = 0;

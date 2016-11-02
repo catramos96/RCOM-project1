@@ -41,7 +41,9 @@
 #define SIMPLE_DEBUG		1
 #define FULL_DEBUG		2
 
-static int BAUDRATE =  B9600;  
-static unsigned int RETRANSMITIONS = 3; 
-static unsigned int TIMEOUT = 1; 
+#define BAUDRATE  B9600;  
+
+
+unsigned int RETRANSMITIONS;
+unsigned int TIMEOUT; 
 //unsigned int BUF_SIZE = 255;  //126 
