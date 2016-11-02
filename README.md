@@ -1,7 +1,3 @@
-nós estamos agora na faculdade, podes vir
-
-Ok, estou a ir agora para ai. Até já.
-
 # Relatório #
 
 https://docs.google.com/document/d/1kmi_Fj4mGASmqxhOTDoC3Hnxkl3D-4IZNzam-zsMRIo/edit
@@ -18,11 +14,7 @@ o trabalho está divido em camadas:
 
 # TODO list #
 
-* estatisticas
-
 * temporizador para o receiver parar em caso de erro
-
-* problema do TIMEOUT no fim
 
 * geracao aleatoria de erros
 
