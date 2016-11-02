@@ -1,5 +1,6 @@
 #include "applicationLayer.h"
 
+
 int getFileSize(int file_descriptor){
   int size = 0, current_pos = 0;
 
@@ -19,6 +20,27 @@ int getFileSize(int file_descriptor){
   lseek(file_descriptor,0,current_pos);
 
   return size;
+}
+
+void loadingBar(float file_size_processed, float file_total_size) {
+  float percentage = 100.0 * file_size_processed / file_total_size;
+
+  printf("\rStatus: %6.2f%% [", percentage);
+
+  int i, len = 50;
+  int pos = percentage * len / 100.0;
+
+  for (i = 0; i < len; i++){
+  	if(i <= pos)
+  		printf("=");
+  	else
+  		printf(" ");
+  }
+    
+
+  printf("]");
+
+  fflush(stdout);
 }
 
 int sendStartPackage(unsigned char * file_name, unsigned char * file_size, unsigned char * file_date, unsigned char * file_perm)
@@ -166,11 +188,11 @@ int receiveStartPackage(struct package *p, unsigned char * data)
   memcpy(tmp,data + i,n_bytes);
   p->file_perm = atoi(tmp);
     
-  printf("Type - %d\n",p->type);        //DEBUG
+  /*printf("Type - %d\n",p->type);        //DEBUG
   printf("Size - %d\n",p->total_size);     
   printf("Name - %s\n",p->file_name);
   printf("Date - %d\n",p->file_date);
-  printf("Perm - 0x%X\n",p->file_perm);
+  printf("Perm - 0x%X\n",p->file_perm);*/
 
   return 0;
 }
@@ -237,7 +259,7 @@ int receivePackage(struct package *p)
 }
 
 int sender(){
-  int file;
+int file;
 
   //Open the file that it's going to be sent
   if((file = open(infoLayer.file_path, O_RDONLY)) == -1){      //Meter mais flags
@@ -252,16 +274,6 @@ int sender(){
     exit(-1);
   }
 
-  //get file_name position
-  /*int pos = 0, i;
-  for(i = 0; i < strlen(infoLayer.file_path);i++){
-    if(infoLayer.file_path[i] == '/'){
-      pos = i;
-    }
-  }*/
-      
-  //information about the file
-  //unsigned char *file_name = infoLayer.file_path+pos+1;
   unsigned char *file_name = basename(infoLayer.file_path);
 
   unsigned char file_size[16], file_date[16], file_perm[16];
@@ -269,7 +281,6 @@ int sender(){
   int size = getFileSize(file);
 
   sprintf(file_size,"%d",size);
-  //printf("File size: %s\n",file_size);
   sprintf(file_date,"%lu",st.st_mtime);
   sprintf(file_perm,"%u",st.st_mode);
 
@@ -279,12 +290,11 @@ int sender(){
      exit(-1);
   }
 
-  int STOP = 0, r = 0, written = 0;
-      
+  int STOP = 0, r = 0;
+  int written = 0;
   unsigned char *data = (unsigned char*) malloc(DATA_SIZE);
 
   while(r = read(file,data,DATA_SIZE)){
-
     if(r == -1){
       perror("Could not read file\n");
       exit(-1);
@@ -297,8 +307,10 @@ int sender(){
     sequenceNumber++;
     memset(data,0,DATA_SIZE);
     written+=r;
+    loadingBar(written,size);
   }
-  free(data); 
+
+  free(data);
 
   //creates and sends package END
   if(sendEndPackage() == -1){
@@ -315,6 +327,7 @@ int sender(){
     printf("Could not close port\n");
     exit(-1);
   }
+  printf("\nFile sent!\n");
       
   return 0;
 }
@@ -335,13 +348,13 @@ int receiver(){
   unsigned char path[128];
   sprintf(path,"%s/%s",infoLayer.file_path,pkg->file_name);
 
-  printf("Path:\n");
-  //printf("%s\n", infoLayer.file_path);
-  //printf("%s\n", pkg->file_name);
-  printf("%s\n", path);
+  /*printf("Path:\n");                //DEBUG
+  printf("%s\n", infoLayer.file_path);
+  printf("%s\n", pkg->file_name);
+  printf("%s\n", path);*/
 
   //pkg->file_perm
-  if((file = open(path, O_APPEND | O_CREAT | O_WRONLY, S_IRWXU | S_IRWXG | S_IRWXO)) == -1){  //FALTAM FLAGS
+  if((file = open(path, O_APPEND | O_CREAT | O_WRONLY | O_EXCL, S_IRWXU | S_IRWXG | S_IRWXO)) == -1){  //FALTAM FLAGS
     perror("Could not create the file in the receiver\n");
     exit(-1);
   }
@@ -362,12 +375,15 @@ int receiver(){
   new_times.modtime = pkg->file_date;    
   utime(path, &new_times);
 
-  //ver mais tarde
-  /*printf("Permissions - %lu - %d\n",st.st_mode,pkg->file_perm);   //DEBUG
-  printf("Date - %lu - %d\n",st.st_mtime,pkg->file_date);*/
+  
+  /*
+  printf("Permissions - %lu - %d\n",st.st_mode,pkg->file_perm);   //DEBUG
+  printf("Date - %lu - %d\n",st.st_mtime,pkg->file_date);
+  */
 
   int written = 0;        //written per package
   int data_received = 0;    //written in the final
+  
 
   //PACKAGES DATA
 
@@ -404,7 +420,8 @@ int receiver(){
       }
     }while(written < pkg->size);
 
-    data_received += written;     //confirmar com package end        
+    data_received += written;     //confirmar com package end 
+    loadingBar(data_received,pkg->total_size);    
   };    
 
   //Checks if the data received has the sama size of the original file
@@ -418,8 +435,9 @@ int receiver(){
     exit(-1);
   }
   free(pkg);
-  
   close(file);
+
+  printf("\nFile received!\n");
   return 0;
 }
 
