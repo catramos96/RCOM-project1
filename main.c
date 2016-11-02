@@ -8,6 +8,9 @@
  */
 int main(int argc, char** argv)
 {	
+
+RETRANSMITIONS=3;
+TIMEOUT=1;
    ///testar application applicationLayer
     if(argc != 1)
     {
@@ -15,7 +18,7 @@ int main(int argc, char** argv)
         exit(1);
     }
     
-    char port[20], status[2], mode[2], path[128];
+    char port[20], status[2], mode[2], path[128], max_size[8];
 	
     printf("\nPORT:\n  /dev/ttyS0\n  /dev/ttyS1\n");
     scanf("%s", port);
@@ -28,6 +31,9 @@ int main(int argc, char** argv)
 	
     printf("\nPATH:\n  Receiver - Path to keep the fille\n  Transmitter - Path of the file to be sent\n");
     scanf("%s",path);
+
+    printf("\nMAX PACKAGE SIZE:\n");
+    scanf("%s",max_size);
     printf("\n\n");
 	
 /*
@@ -40,14 +46,34 @@ int main(int argc, char** argv)
 	scanf("%d",BUF_SIZE);
 	if(BUF_SIZE==0)
 		BUF_SIZE=126;
-	
+	*/
+	if((atoi(status))==0)
+	{
 	printf("Maximum retransmissions: ");
-	scanf("%d",RETRANSMITIONS);
+	scanf("%d",&RETRANSMITIONS);
+	printf("Timeout for retransmissions: ");
+	scanf("%d",&TIMEOUT);	
+	}
+	else
+	{
+	printf("Total timeout: ");
+	scanf("%d",&TIMEOUT);	
+	}
 	
-	printf("Timeout: ");
-	scanf("%d",TIMEOUT);	
-*/	
+initStatistics();
 
+
+    initApplicationLayer(port,atoi(status),atoi(mode),atoi(max_size),path);
+	
+   
+displayStatistics(atoi(status));
+	
+	
+    return 0;
+}
+
+void initStatistics()
+{
 	//inicializar struct estatisticas	
     statistics.tramasIenviadas=0;
     statistics.tramasIretransmitidas=0;
@@ -55,21 +81,23 @@ int main(int argc, char** argv)
     statistics.timeouts=0;
     statistics.REJenviados=0;
     statistics.REJrecebidos=0;
-
-    initApplicationLayer(port,atoi(status),atoi(mode),path);
-	
-    printf("Number of I frames sent: %d\n",statistics.tramasIenviadas);
-    printf("Number of I frames retransmissioned: %d\n",statistics.tramasIretransmitidas);
-    printf("Number of I frames received: %d\n",statistics.tramasIrecebidas);
-    printf("Number of timeouts: %d\n",statistics.timeouts);
-    printf("Number of REJ frames sent: %d\n",statistics.REJenviados);
-    printf("Number of REJ frames received: %d\n",statistics.REJrecebidos);
-	
-	
-    return 0;
 }
 
+void displayStatistics(int status)
+{
+if(status==0)	//TRANSMITTER
+{
+    printf("Number of I frames sent: %d\n",statistics.tramasIenviadas);
+    printf("Number of timeouts: %d\n",statistics.timeouts);
+    printf("Number of REJ frames received: %d\n",statistics.REJrecebidos);
+}
+else{
+    printf("Number of I frames received: %d\n",statistics.tramasIrecebidas);
+    printf("Number of I frames retransmissioned: %d\n",statistics.tramasIretransmitidas);
+        printf("Number of REJ frames sent: %d\n",statistics.REJenviados);
 
+}
+}
 
 /**
  * application Layer

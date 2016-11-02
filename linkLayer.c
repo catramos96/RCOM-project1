@@ -341,7 +341,7 @@ int llread(int fd, unsigned char * buffer)
     //rececao da trama I (read) com verificacao de erros e desstuffing
     Message* msg = (Message*)malloc(sizeof(Message));
 
-    alarm(data_link.timeout * data_link.numTransmissions + 1);
+    alarm(data_link.timeout );
     retry = 0;
     
     while(!done)

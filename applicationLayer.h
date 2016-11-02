@@ -23,7 +23,7 @@ struct applicationLayer {
 struct package{
 	int type;
 	//data
-	unsigned char data[DATA_SIZE];
+	unsigned char *data;
 	unsigned char number;
 	int size;
 	//control
@@ -52,4 +52,4 @@ int sender();
 
 int receiver();
 
-int initApplicationLayer(unsigned char * port,int status, int mode,unsigned char * file_path);
+int initApplicationLayer(unsigned char * port,int status, int mode,int max_size,unsigned char * file_path);
