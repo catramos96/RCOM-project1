@@ -7,16 +7,7 @@
  * file				//por agora ainda nao
  */
 int main(int argc, char** argv)
-{
-	
-//inicializar struct estatisticas	
-statistics.tramasIenviadas=0;
-statistics.tramasIretransmitidas=0;
-statistics.tramasIrecebidas=0;
-statistics.timeouts=0;
-statistics.REJenviados=0;
-statistics.REJrecebidos=0;
-	
+{	
    ///testar application applicationLayer
     if(argc != 1)
     {
@@ -56,34 +47,59 @@ statistics.REJrecebidos=0;
 	printf("Timeout: ");
 	scanf("%d",TIMEOUT);	
 */	
+
+	//inicializar struct estatisticas	
+	statistics.tramasIenviadas=0;
+	statistics.tramasIretransmitidas=0;
+	statistics.tramasIrecebidas=0;
+	statistics.timeouts=0;
+	statistics.REJenviados=0;
+	statistics.REJrecebidos=0;
+
     initApplicationLayer(port,atoi(status),atoi(mode),path);
-    
-    /**
-     * application Layer
-     */
-    
-    //argv[1]-> porta, argv2 -> transmitter/receiver argv3->path
-    //sender(0,argv[1]);
-    
-    /*
-    * Link layer
-    */
+	
+	printf("Number of I frames sent: %d\n",statistics.tramasIenviadas);
+	printf("Number of I frames retransmissioned: %d\n",statistics.tramasIretransmitidas);
+	printf("Number of I frames received: %d\n",statistics.tramasIrecebidas);
+	printf("Number of timeouts: %d\n",statistics.timeouts);
+	printf("Number of REJ frames sent: %d\n",statistics.REJenviados);
+	printf("Number of REJ frames received: %d\n",statistics.REJrecebidos);
+	
+	
+    return 0;
+}
+
+
+
+/**
+ * application Layer
+ */
+void test_application(char *a)
+{
+    //a-> porta, argv2 -> transmitter/receiver argv3->path
+    //sender(0,a);
+}
+
 /*
-    if ( (argc < 3) || 
-        ((strcmp("/dev/ttyS0", argv[1])!=0) && (strcmp("/dev/ttyS1", argv[1])!=0)) ||
-        ((strcmp("TRANSMITTER", argv[2])!=0) && (strcmp("RECEIVER", argv[2])!=0)) )
+* Link layer
+*/
+void test_link(int total, char*a, char*b)
+{
+    if ( (total < 3) || 
+        ((strcmp("/dev/ttyS0", a)!=0) && (strcmp("/dev/ttyS1", a)!=0)) ||
+        ((strcmp("TRANSMITTER", b)!=0) && (strcmp("RECEIVER", b)!=0)) )
     {
       printf("Usage:\twserial SerialPort flag\n\tex: wserial /dev/ttyS1 TRANSMITTER\n");
       exit(1);
     }
 
     //inicializa o dataLink
-    init_linkLayer(argv[1]); 
+    init_linkLayer(a); 
 
     int isReceiver = 1;
-    if(strcmp("TRANSMITTER", argv[2])==0) isReceiver=0;
+    if(strcmp("TRANSMITTER",b)==0) isReceiver=0;
 
-    int fd = llopen(argv[1],isReceiver);
+    int fd = llopen(a,isReceiver);
     
     
     printf("-----------------------------------------------\n");
@@ -96,16 +112,17 @@ statistics.REJrecebidos=0;
     printf("-----------------------------------------------\n");
     
     llclose(fd,isReceiver);
+}
+
+/*
+* Teste BYTE stuffing
 */
-    /*
-     * Teste BYTE stuffing
-     */
-    
-    /*
+void test_byteStuffing()
+{
     char *info = NULL;
     
-    char *data = "a]\n}[b^c\n}}}~\nd";
-    int data_length = 15;
+    char *data = "a]}[b^c}}}~d";
+    int data_length = 12;
     
     info = build_frame_I(data,data_length);     //criacao da trama I
     
@@ -125,21 +142,11 @@ statistics.REJrecebidos=0;
         printf("%c\n",info[i]);
     }
     
-    int newsize = desstuff(info, size);
+    int newsize = destuff(info, size);
     
     printf("\n--------------------------------------\n");
     printf("\nInfo depois do desstuffing:\n");
     for(i = 0; i < newsize; i++){
         printf("%c\n",info[i]);
-    }*/
-	
-	printf("Number of I frames sent: %d\n",statistics.tramasIenviadas);
-	printf("Number of I frames retransmissioned: %d\n",statistics.tramasIretransmitidas);
-	printf("Number of I frames received: %d\n",statistics.tramasIrecebidas);
-	printf("Number of timeouts: %d\n",statistics.timeouts);
-	printf("Number of REJ frames sent: %d\n",statistics.REJenviados);
-	printf("Number of REJ frames received: %d\n",statistics.REJrecebidos);
-	
-	
-    return 0;
+    }
 }

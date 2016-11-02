@@ -3,7 +3,7 @@
 INCLUDES = applicationLayer.h linkLayer.h constants.h
 SOURCES = main.c linkLayer.c applicationLayer.c linkLayerAux.c
 OBJFILES = main.o linkLayer.o applicationLayer.o linkLayerAux.o
-EXEC = exec
+EXEC = main
 
 # regras de sufixo
 .SUFFIXES : .c .o
