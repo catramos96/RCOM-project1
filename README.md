@@ -18,6 +18,24 @@ o trabalho está divido em camadas:
 
 # TODO list #
 
+* estatisticas
+
+* temporizador para o receiver parar em caso de erro
+
+* problema do TIMEOUT no fim
+
+* geracao aleatoria de erros
+
+* recuperacao em casos de erros (?)
+
+// para depois
+
+* comentarios
+
+* documentacao
+
+* organizacao de codigo
+
 **Link Layer** 
 
 
