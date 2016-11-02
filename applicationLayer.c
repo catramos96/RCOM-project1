@@ -6,13 +6,13 @@ int getFileSize(int file_descriptor){
   //get current position
   if((current_pos = lseek(file_descriptor,0,SEEK_CUR)) == -1){
     perror("Error at gathering the file size");
-    exit(-1);
+    return -1;
   }
 
   //get n bytes to end of file
   if((size = lseek(file_descriptor,0,SEEK_END)) == -1){
     perror("Error at gathering the file size");
-    exit(-1);
+    return -1;
   }
 
   //put position to previous position
@@ -207,7 +207,7 @@ int receivePackage(struct package *p)
   memset(data,0,MAX_PKG_SIZE);
 
   if(llread(infoLayer.fileDescriptor,data) == -1){
-    perror("Could not read");
+    //printf("Could not read\n");
     return -1;
   }
 
@@ -216,19 +216,19 @@ int receivePackage(struct package *p)
 
   if(p->type == PKG_START){
     if(receiveStartPackage(p,data) == -1){
-      perror("Could not receive START package");
+      printf("Could not receive START package");
       return -1;
     }
   }
 
   else if(p->type == PKG_DATA){
     if(receiveDataPackage(p,data) == -1){
-      perror("Could not receive DATA package");
+      printf("Could not receive DATA package");
       return -1;
     }
   }
   else if(p->type != PKG_END){
-    perror("Type of package received unknown");
+    printf("Type of package received unknown");
     return -1;
   }
 
@@ -236,20 +236,21 @@ int receivePackage(struct package *p)
   return 0;
 }
 
-int sender(){
+int sender()
+{
   int file;
 
   //Open the file that it's going to be sent
   if((file = open(infoLayer.file_path, O_RDONLY)) == -1){      //Meter mais flags
     perror("Could not open file with filepath\n");
-    exit(-1);
+    return -1;
   }
 
   //get status struct from the file
   struct stat st;
   if(stat(infoLayer.file_path, &st) == -1){
     perror("Could not access file status\n");
-    exit(-1);
+    return -1;
   }
 
   //get file_name position
@@ -275,8 +276,8 @@ int sender(){
 
   //PACKAGE START
   if(sendStartPackage(file_name,file_size,file_date,file_perm) == -1){
-    printf("Could not send START Package\n");
-     exit(-1);
+  	printf("Could not send START Package\n");
+  	return -1;
   }
 
   int STOP = 0, r = 0, written = 0;
@@ -287,12 +288,12 @@ int sender(){
 
     if(r == -1){
       perror("Could not read file\n");
-      exit(-1);
+      return -1;
     }
 
     if(sendDataPackage(data,r) == -1){  
       printf("Could not send DATA package\n");
-      exit(-1);
+      return -1;
     }
     sequenceNumber++;
     memset(data,0,DATA_SIZE);
@@ -303,53 +304,49 @@ int sender(){
   //creates and sends package END
   if(sendEndPackage() == -1){
     printf("Could not send END Package\n");
-    exit(-1);
+    return -1;
   }
 
   if(written != size){
     printf("Data size and data read are diferent\n");
-    exit(-1);
+    return -1;
   }
 
   if(llclose(infoLayer.fileDescriptor,infoLayer.status) == -1){
     printf("Could not close port\n");
-    exit(-1);
+    return -1;
   }
       
   return 0;
 }
 
+int receiver(unsigned char *path){
 
-int receiver(){
-	
   int file;
 
   struct package * pkg = malloc(sizeof(struct package));
 
   if(receivePackage(pkg)){
     printf("Error at receiving the START package\n");
-    exit(-1);
+    return -1;
   } 
-
-  //create the file with the same permissions
-  unsigned char path[128];
+  
   sprintf(path,"%s/%s",infoLayer.file_path,pkg->file_name);
 
   printf("Path:\n");
-  //printf("%s\n", infoLayer.file_path);
-  //printf("%s\n", pkg->file_name);
   printf("%s\n", path);
 
   //pkg->file_perm
-  if((file = open(path, O_APPEND | O_CREAT | O_WRONLY, S_IRWXU | S_IRWXG | S_IRWXO)) == -1){  //FALTAM FLAGS
+  if((file = open(path, O_TRUNC | O_CREAT | O_WRONLY, S_IRWXU | S_IRWXG | S_IRWXO)) == -1){  //FALTAM FLAGS
     perror("Could not create the file in the receiver\n");
-    exit(-1);
+    return -1;
   }
   
+  //create the file with the same permissions
   if (fchmod(file, pkg->file_perm))
   {
     perror("chmod");
-    exit(-1);
+    return -1;
   }
 
   //set the last time modification
@@ -377,7 +374,7 @@ int receiver(){
     memset(pkg->data,0,DATA_SIZE);
     if(receivePackage(pkg) == -1){
       printf("Could not receive DATA package\n");
-      exit(-1);
+      return -1;
     }
 
     if(pkg->type != PKG_DATA){
@@ -385,37 +382,42 @@ int receiver(){
         break;
       else{
         printf("Last package not an END package\n");
-        exit(-1);
+        return -1;
       }
     }
 
     if(pkg->number != sequenceNumber){
       printf("Wrong order of the DATA packages received (%u != %u)\n", pkg->number, sequenceNumber);
-      exit(-1);
+      return -1;
     }
 
     sequenceNumber++;
 
     //Write data on the created file
     do{
-      if((written += write(file , pkg->data+written , pkg->size)) == -1){
-        perror("Could not write in the created file of receiver\n");
-        exit(-1);
-      }
-    }while(written < pkg->size);
+		if((written += write(file , pkg->data+written , pkg->size)) == -1){
+			perror("Could not write in the created file of receiver\n");
+			return -1;
+		}
+    }
+    while(written < pkg->size);
 
     data_received += written;     //confirmar com package end        
   };    
 
   //Checks if the data received has the sama size of the original file
   int filesize = getFileSize(file);
+  if (filesize == -1){
+  	return -1;
+  }
+  
   if(filesize != pkg->total_size){
-    printf("File sizes don't match: %d/%d", filesize, pkg->total_size);  
+    printf("File size doesn't match info in start package: %d/%d\n", filesize, pkg->total_size);  
   }  
   
   if(llclose(infoLayer.fileDescriptor,infoLayer.status) == -1){
     printf("Could not close port\n");
-    exit(-1);
+    return -1;
   }
   free(pkg);
   
@@ -423,7 +425,8 @@ int receiver(){
   return 0;
 }
 
-int initApplicationLayer(unsigned char *port, int status, unsigned char * file_path){
+int initApplicationLayer(unsigned char *port, int status, unsigned char * file_path)
+{
   infoLayer.status = status;
   memcpy(infoLayer.file_path, file_path, strlen(file_path));
 
@@ -431,20 +434,24 @@ int initApplicationLayer(unsigned char *port, int status, unsigned char * file_p
   init_linkLayer(port);
 
   if((infoLayer.fileDescriptor = llopen(port,status)) == -1){
-    printf("Could not open connection with the receiver\n");
-    exit(-1);
+    printf("Could not open connection\n");
+    return -1;
   }
 
   if(status == TRANSMITTER){
-    sender();
+    return sender();
   }
   else if(status == RECEIVER){
-    receiver();
+  	int res;
+  	unsigned char newFilePath[256];
+  	res = receiver(newFilePath);
+  	if (res == -1 && strlen(newFilePath) > 0 ){
+  		remove(newFilePath);
+  	}
+  	return res;
   }
   else{
     printf("Wrong status (RECEIVER - 1 or TRANSMITTER - 0\n");
-    exit(-1);
+    return -1;
   }
-
-  return 0;
 }

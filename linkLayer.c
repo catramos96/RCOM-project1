@@ -35,13 +35,13 @@ int llopen(unsigned char* port, int isReceiver)
 	fd = open(port, O_RDWR | O_NOCTTY );
 	if (fd <0) {
 		perror(port); 
-		return 1;
+		return -1;
 	}
 
 	// save current port settings
 	if ( tcgetattr(fd,&oldtio) == -1) { 
 		perror("tcgetattr");
-		return 1;
+		return -1;
 	}
 
 	bzero(&newtio, sizeof(newtio));
@@ -58,7 +58,7 @@ int llopen(unsigned char* port, int isReceiver)
 
 	if ( tcsetattr(fd,TCSANOW,&newtio) == -1) {
 		perror("tcsetattr");
-		return 1;
+		return -1;
 	}
 
 	if(isReceiver)
@@ -121,7 +121,7 @@ int llopen_receiver(int fd)
 	//envio da trama UA
 	if((res = write(fd,ua,newsize)) == -1){
 		perror("write sender");
-		return 1;
+		return -1;
 	}else{
 		printf("trama UA enviada! \n");
 	}
@@ -209,8 +209,8 @@ int llopen_sender(int fd)
 * @param length  comprimento do array de caracteres 
 * @return número de caracteres escritos ; valor negativo em caso de erro
 */
-int llwrite(int fd, unsigned char * buffer, int length){
-    
+int llwrite(int fd, unsigned char * buffer, int length)
+{    
     (void) signal(SIGALRM, handler);  // instala  rotina que atende interrupcao
     int tries = 0;
     int n_written = 0;
@@ -293,8 +293,9 @@ int llwrite(int fd, unsigned char * buffer, int length){
 * @param buffer array de caracteres recebidos 
 * @return comprimento do array (número de caracteres lidos) ; valor negativo em caso de erro
 */
-int llread(int fd, unsigned char * buffer){
-
+int llread(int fd, unsigned char * buffer)
+{
+	(void) signal(SIGALRM, handler);  // instala  rotina que atende interrupcao
     int res;
     unsigned char *frame = NULL;
     int done = 0;
@@ -302,7 +303,14 @@ int llread(int fd, unsigned char * buffer){
     Message* msg = (Message*)malloc(sizeof(Message));
     int send = 0;
     
-    while(!done){
+    alarm(data_link.timeout * data_link.numTransmissions + 1);
+    retry = 0;
+    
+    while(!done)
+    {
+    	if(retry){
+    		return -1;
+    	}    
 
         ReturnType ret = receive(fd,msg);
 
@@ -322,8 +330,7 @@ int llread(int fd, unsigned char * buffer){
             	if(!msg->isRetransmission){
                 	memcpy(buffer, &msg->message,msg->message_size);//destination, source, num B
 					done = 1;
-				}
-				
+				}				
                
            		frame = build_frame_SU(RR);  //criacao da trama RR
                 printf("Trama I recebida (%d)!\n", data_link.sequenceNumber);  //caso de sucesso
@@ -333,9 +340,7 @@ int llread(int fd, unsigned char * buffer){
             /*else{
                 printf("Espera!\n");  //caso de sucesso
             }*/
-        }
-
-        
+        }        
     		
         /*printf("llread RR antes do sfuffing\n");
         display(rr,FRAME_SIZE);*/
@@ -389,6 +394,7 @@ int llclose(int fd, int isReceiver)
 	close(fd);
 	return ret;//retorna 0 se correr sem problemas
 }
+
 int llclose_sender(int fd)
 {
     (void) signal(SIGALRM, handler);  // instala  rotina que atende interrupcao
@@ -429,10 +435,12 @@ int llclose_sender(int fd)
         //Verificar e receber a trama DISC
         ReturnType ret = receive(fd,msg);
         
-        if(ret == ERROR)    return 1;
-	else
+        if(ret == ERROR) return 1;
+        
+		else
         {
             if(msg->type == DISC){
+            	alarm(0);
                 done = 1;
                 free(disc); // liberta a memoria
                 printf("Trama DISC recebida!\n");
@@ -466,6 +474,7 @@ int llclose_sender(int fd)
         return 0;
     }
 }
+
 int llclose_receiver(int fd)
 {
     (void) signal(SIGALRM, handler);  // instala  rotina que atende interrupcao
@@ -523,6 +532,7 @@ int llclose_receiver(int fd)
             ret = receive(fd,msg);
             if(ret == OK){
                 if(msg->type == UA){
+                	alarm(0); 
                     free(disc);
                     done = 1;
                     printf("trama UA recebida\n");
