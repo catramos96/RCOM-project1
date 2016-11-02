@@ -31,9 +31,6 @@
 #define	PKG_START		2
 #define PKG_END			3
 
-#define DATA_SIZE 		114
-#define MAX_PKG_SIZE		124
-
 #define RECEIVER		1
 #define TRANSMITTER		0
 
@@ -45,5 +42,8 @@
 
 
 unsigned int RETRANSMITIONS;
-unsigned int TIMEOUT; 
+unsigned int TIMEOUT;
+unsigned int DATA_SIZE;
+unsigned int MAX_PKG_SIZE;
+
 //unsigned int BUF_SIZE = 255;  //126 

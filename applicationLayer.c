@@ -367,14 +367,15 @@ int receiver(unsigned char *path){
 
   int file;
 
-  struct package * pkg = malloc(sizeof(struct package));
+  struct package pkg;
+  pkg.data = malloc(DATA_SIZE);
 
-  if(receivePackage(pkg)){
+  if(receivePackage(&pkg)){
     printf("Error at receiving the START package\n");
     return -1;
   } 
   
-  sprintf(path,"%s/%s",infoLayer.file_path,pkg->file_name);
+  sprintf(path,"%s/%s",infoLayer.file_path,pkg.file_name);
 
 
   printf("Path: %s\n", path);
@@ -386,7 +387,7 @@ int receiver(unsigned char *path){
   }
   
   //create the file with the same permissions
-  if (fchmod(file, pkg->file_perm))
+  if (fchmod(file, pkg.file_perm))
   {
     perror("chmod");
     return -1;
@@ -399,12 +400,12 @@ int receiver(unsigned char *path){
   stat(path, &st);
 
   new_times.actime = st.st_atime;  
-  new_times.modtime = pkg->file_date;    
+  new_times.modtime = pkg.file_date;    
   utime(path, &new_times);
 
   if(infoLayer.mode == SIMPLE_DEBUG || infoLayer.mode == FULL_DEBUG){
-      printf("Permissions - %lu - %d\n",st.st_mode,pkg->file_perm); 
-      printf("Date - %lu - %d\n",st.st_mtime,pkg->file_date);
+      printf("Permissions - %lu - %d\n",st.st_mode,pkg.file_perm); 
+      printf("Date - %lu - %d\n",st.st_mtime,pkg.file_date);
   }
 
   int written = 0;        //written per package
@@ -415,14 +416,14 @@ int receiver(unsigned char *path){
   while(1){
         
     written = 0;
-    memset(pkg->data,0,DATA_SIZE);
-    if(receivePackage(pkg) == -1){
+    memset(pkg.data,0,DATA_SIZE);
+    if(receivePackage(&pkg) == -1){
       printf("Could not receive DATA package\n");
       return -1;
     }
 
-    if(pkg->type != PKG_DATA){
-      if(pkg->type == PKG_END)
+    if(pkg.type != PKG_DATA){
+      if(pkg.type == PKG_END)
         break;
       else{
         printf("Last package not an END package\n");
@@ -430,8 +431,8 @@ int receiver(unsigned char *path){
       }
     }
 
-    if(pkg->number != sequenceNumber){
-      printf("Wrong order of the DATA packages received (%u != %u)\n", pkg->number, sequenceNumber);
+    if(pkg.number != sequenceNumber){
+      printf("Wrong order of the DATA packages received (%u != %u)\n", pkg.number, sequenceNumber);
       return -1;
     }
 
@@ -439,17 +440,17 @@ int receiver(unsigned char *path){
 
     //Write data on the created file
     do{
-		if((written += write(file , pkg->data+written , pkg->size)) == -1){
+		if((written += write(file , pkg.data+written , pkg.size)) == -1){
 			perror("Could not write in the created file of receiver\n");
 			return -1;
 		}
     }
-    while(written < pkg->size);
+    while(written < pkg.size);
 
     data_received += written;     //confirmar com package end
     
     if(infoLayer.mode == NORMAL){
-      loadingBar(data_received,pkg->total_size);
+      loadingBar(data_received,pkg.total_size);
     } 
   };    
 
@@ -459,15 +460,14 @@ int receiver(unsigned char *path){
   	return -1;
   }
   
-  if(filesize != pkg->total_size){
-    printf("File size doesn't match info in start package: %d/%d\n", filesize, pkg->total_size);  
+  if(filesize != pkg.total_size){
+    printf("File size doesn't match info in start package: %d/%d\n", filesize, pkg.total_size);  
   }  
   
   if(llclose(infoLayer.fileDescriptor,infoLayer.status) == -1){
     printf("Could not close port\n");
     return -1;
   }
-  free(pkg);
   close(file);
 
   if(infoLayer.mode == NORMAL){
@@ -477,10 +477,12 @@ int receiver(unsigned char *path){
   return 0;
 }
 
-int initApplicationLayer(unsigned char *port, int status, int mode,unsigned char * file_path)
+int initApplicationLayer(unsigned char *port, int status, int mode,int max_size,unsigned char * file_path)
 {
   infoLayer.status = status;
   infoLayer.mode = mode;
+  MAX_PKG_SIZE = max_size;
+  DATA_SIZE = max_size - 4;
   memcpy(infoLayer.file_path, file_path, strlen(file_path));
 
   //inicializa o dataLink

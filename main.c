@@ -18,6 +18,7 @@ TIMEOUT=1;
         exit(1);
     }
     
+
     unsigned char port[20], path[128];
     char status[2], mode[2];
 	
@@ -32,6 +33,9 @@ TIMEOUT=1;
 	
     printf("\nPATH:\n  Receiver - Path to keep the fille\n  Transmitter - Path of the file to be sent\n");
     scanf("%s",path);
+
+    printf("\nMAX PACKAGE SIZE:\n");
+    scanf("%s",max_size);
     printf("\n\n");
 	
 /*
@@ -57,6 +61,7 @@ TIMEOUT=1;
 	printf("Total timeout: ");
 	scanf("%d",&TIMEOUT);	
 	}
+
 	
 initStatistics();
 
