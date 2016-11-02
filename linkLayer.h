@@ -19,6 +19,7 @@ typedef struct
     unsigned int sequenceNumber;    /*Número de sequência da trama: 0, 1*/
     unsigned int timeout;  /*Valor do temporizador: 1 s*/
     unsigned int numTransmissions;  /*Número de tentativas em caso de falha*/
+    unsigned int mode;
 }dataLink;
 
 /**
@@ -66,12 +67,12 @@ static dataLink data_link;
 
 typedef struct
 {
-	unsigned int tramasIenviadas;
-	unsigned int tramasIretransmitidas;
-	unsigned int tramasIrecebidas;
-	unsigned int timeouts;
-	unsigned int REJenviados;
-	unsigned int REJrecebidos;
+    unsigned int tramasIenviadas;
+    unsigned int tramasIretransmitidas;
+    unsigned int tramasIrecebidas;
+    unsigned int timeouts;
+    unsigned int REJenviados;
+    unsigned int REJrecebidos;
 }estatisticas;
 
 estatisticas statistics;
@@ -80,7 +81,7 @@ estatisticas statistics;
 
 //METODOS
 
-void init_linkLayer(unsigned char *port);
+void init_linkLayer(unsigned char *port, unsigned int mode);
 
 int llopen(unsigned char *port, int isReceiver);
 

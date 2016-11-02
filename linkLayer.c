@@ -6,19 +6,21 @@ int retry = 0;
 /**
 * Inicializacao do layerLink
 */
-void init_linkLayer(unsigned char* port)
+void init_linkLayer(unsigned char* port, unsigned int mode)
 {
     strcpy(data_link.port, port);
     data_link.baudRate = BAUDRATE;
     data_link.sequenceNumber = 0; //N(S) = 0
     data_link.timeout = TIMEOUT;
     data_link.numTransmissions = RETRANSMITIONS;
+    data_link.mode = mode;
 }
 
 void handler()
 {
-    printf("TIMEOUT\n");
-	statistics.timeouts++;
+    if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
+        printf("TIMEOUT\n");
+    statistics.timeouts++;
     retry = 1;
 }
 
@@ -79,7 +81,8 @@ int llopen(unsigned char* port, int isReceiver)
 int llopen_receiver(int fd)
 {
     int res;
-    printf("RECEIVER\n");
+    if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
+        printf("RECEIVER\n");
 
     //Verificar e receber a trama SET 
     Message* msg = (Message*)malloc(sizeof(Message));
@@ -89,16 +92,14 @@ int llopen_receiver(int fd)
         ret = receive(fd,msg);
         
         if(ret == ERROR)
-        {
-            printf("Erro de leitura\n");
             return -1;
-        }
         else if(ret == OK)
         {
             //verifica que e uma trama do tipo SET 
             if(msg->type == SET)
             {
-                printf("Trama SET recebida!\n");
+                if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
+                    printf("Trama SET recebida!\n");
                 break;
             }
         }
@@ -109,13 +110,19 @@ int llopen_receiver(int fd)
     //criacao da trama UA
     unsigned char *ua = build_frame_SU(UA,FRAME_A3);
 
-    /*printf("llopen_receiver UA antes do stuffing\n");
-    display(ua, FRAME_SIZE);*/
+    if(data_link.mode == FULL_DEBUG)
+    {
+        printf("llopen_receiver UA antes do stuffing\n");
+        display(ua, FRAME_SIZE);
+    }
 
     int newsize = stuff(ua, FRAME_SIZE);
 
-    /*printf("llopen_receiver UA depois do stuffing\n");
-    display(ua, newsize);*/
+    if(data_link.mode == FULL_DEBUG)
+    {
+        printf("llopen_receiver UA depois do stuffing\n");
+        display(ua, newsize);
+    }
 
     //envio da trama UA
     if((res = write(fd,ua,newsize)) == -1)
@@ -123,7 +130,8 @@ int llopen_receiver(int fd)
         perror("write sender");
         return -1;
     }
-    printf("trama UA enviada! \n");
+    if(data_link.mode == SIMPLE_DEBUG  || data_link.mode == FULL_DEBUG)
+        printf("trama UA enviada! \n");
 
     return 0;
 }
@@ -133,19 +141,26 @@ int llopen_sender(int fd)
     signal(SIGALRM, handler);  // instala  rotina que atende interrupcao
     int res;
     int done = 0;
-    printf("SENDER\n");
+    if(data_link.mode == SIMPLE_DEBUG  || data_link.mode == FULL_DEBUG)
+        printf("SENDER\n");
 
     //criacao da trama SET
     unsigned char *set = build_frame_SU(SET,FRAME_A3);
 	
-    /*printf("llopen_sender SET antes do sfuffing\n");
-    display(set, FRAME_SIZE);*/
+    if(data_link.mode == FULL_DEBUG)
+    {
+        printf("llopen_sender SET antes do sfuffing\n");
+        display(set, FRAME_SIZE);
+    }
 	
     //stuffing
     int newsize = stuff(set, FRAME_SIZE);
 	
-    /*printf("llopen_sender SET depois do sfuffing\n");
-    display(set, newsize);*/
+    if(data_link.mode == FULL_DEBUG)
+    {
+        printf("llopen_sender SET depois do sfuffing\n");
+        display(set, newsize);
+    }
 	
     Message* msg = (Message*)malloc(sizeof(Message));
     
@@ -171,7 +186,9 @@ int llopen_sender(int fd)
             alarm(data_link.timeout);  
             retry = 0;
             tries++;
-            printf("trama SET enviada!\n");
+            
+            if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
+                printf("trama SET enviada!\n");
         }
         
         //Verificar e receber a trama UA
@@ -190,12 +207,16 @@ int llopen_sender(int fd)
                     {
                         done = 1;
                         free(set); // liberta a memoria da trama criada
-                        printf("trama UA recebida!\n");
+                        
+                        if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
+                            printf("trama UA recebida!\n");
                     }
                     else
                     {
                         retry = 1;
-                        printf("Erro no cabecalho da trama UA\n");
+                        
+                        if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
+                            printf("Erro no cabecalho da trama UA\n");
                     }
                 }
             }
@@ -227,13 +248,19 @@ int llwrite(int fd, unsigned char * buffer, int length)
     unsigned char *frame_i = build_frame_I(buffer,length);  
     int size = length+FRAME_SIZE+1;
     
-    /* printf("llwrite I antes do sfuffing\n");
-    display(frame_i, size); */
+    if(data_link.mode == FULL_DEBUG)
+    {
+        printf("llwrite I antes do sfuffing\n");
+        display(frame_i, size);
+    }
     
     int newsize = stuff(frame_i,size);
     
-    /*printf("llwrite I depois do sfuffing\n");
-    display(frame_i, newsize);*/
+    if(data_link.mode == FULL_DEBUG)
+    {
+        printf("llwrite I depois do sfuffing\n");
+        display(frame_i, newsize);
+    }
 
     Message* msg = (Message*)malloc(sizeof(Message));
         
@@ -258,8 +285,10 @@ int llwrite(int fd, unsigned char * buffer, int length)
             retry = 0;
             tries++;
             
-            printf("Trama I enviada !\n");
-			statistics.tramasIenviadas++;
+            if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
+                printf("Trama I enviada !\n");
+            
+            statistics.tramasIenviadas++;
         }
         
         //Verificar e receber a trama RR OU REJ com Nr = 1
@@ -275,14 +304,16 @@ int llwrite(int fd, unsigned char * buffer, int length)
                 done = 1;
                 free(frame_i);
                 
-                printf("Trama RR recebida!\n");
+                if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
+                    printf("Trama RR recebida!\n");
             }
             else if(msg->type == REJ)
             {
                 retry = 1;
                 
-                printf("Trama REJ recebida\n");
-				statistics.REJrecebidos++;
+                if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
+                    printf("Trama REJ recebida\n");
+                statistics.REJrecebidos++;
             }
         }
     }
@@ -300,7 +331,7 @@ int llwrite(int fd, unsigned char * buffer, int length)
 */
 int llread(int fd, unsigned char * buffer)
 {
-	(void) signal(SIGALRM, handler);  // instala  rotina que atende interrupcao
+    (void) signal(SIGALRM, handler);  // instala  rotina que atende interrupcao
 
     int res;
     unsigned char *frame = NULL;
@@ -316,7 +347,7 @@ int llread(int fd, unsigned char * buffer)
     while(!done)
     {
     	if(retry){
-    		return -1;
+            return -1;
     	}
     	
         ReturnType ret = receive(fd,msg);
@@ -328,13 +359,14 @@ int llread(int fd, unsigned char * buffer)
             frame = build_frame_SU(REJ,FRAME_A3);   // constroi a trama REJ se erros nos dados
             send = 1;
             statistics.REJenviados++;
-            printf("Data error receiving frame I (bcc2) !\n");
+            
+            if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
+                printf("Data error receiving frame I (bcc2) !\n");
         }
         else if(ret == OK)
         { 
             if(msg->type == I)
             {
-
                 if(!msg->isRetransmission)  //se nao for uma retransmissao, copia a mensagem para o buffer 
                 {
                     memcpy(buffer, &msg->message,msg->message_size);//destination, source, num B
@@ -344,20 +376,28 @@ int llread(int fd, unsigned char * buffer)
                 frame = build_frame_SU(RR,FRAME_A3);  //criacao da trama RR
                 send = 1;
                 
-                printf("Trama I recebida!\n");  //caso de sucesso
-				statistics.tramasIrecebidas++;
+                if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
+                    printf("Trama I recebida!\n");  //caso de sucesso
+                    
+                statistics.tramasIrecebidas++;
             }
         }
-	
-        /*printf("llread RR antes do sfuffing\n");
-        display(rr,FRAME_SIZE);*/
 
         if(send)
         {
+            if(data_link.mode == FULL_DEBUG)
+            {
+                printf("llread REJ antes do sfuffing\n");
+                display(frame,FRAME_SIZE);
+            }
+        
             int newsize = stuff(frame,FRAME_SIZE);
           
-            /* printf("llread RR depois do sfuffing\n");
-            display(rr,newsize);*/
+            if(data_link.mode == FULL_DEBUG)
+            {
+                printf("llread RR/REJ depois do sfuffing\n");
+                display(frame,newsize);
+            }
         	
             //envia a trama RR/REJ
             if((res = write(fd,frame,newsize)) == -1)    //Envio da Trama I0
@@ -367,7 +407,8 @@ int llread(int fd, unsigned char * buffer)
             }
             send = 0;
             
-            printf("Trama RR/REJ enviada!\n");
+            if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
+                printf("Trama RR/REJ enviada!\n");
         }
     
     }
@@ -415,13 +456,19 @@ int llclose_sender(int fd)
 	
     unsigned char* disc = build_frame_SU(DISC,FRAME_A3);
 	
-   /* printf("llclose_sender DISC antes do sfuffing\n");
-    display(disc, FRAME_SIZE);*/
+    if(data_link.mode == FULL_DEBUG)
+    {
+        printf("llclose_sender DISC antes do sfuffing\n");
+        display(disc, FRAME_SIZE);
+    }
 	
     int newsize = stuff(disc, FRAME_SIZE);
 	
-    /*printf("llclose_sender DISC depois do sfuffing\n");
-    display(disc, newsize);*/
+    if(data_link.mode == FULL_DEBUG)
+    {
+        printf("llclose_sender DISC depois do sfuffing\n");
+        display(disc, newsize);
+    }
 		
     while(!done)
     {
@@ -444,7 +491,8 @@ int llclose_sender(int fd)
             retry = 0;
             tries++;
             
-            printf("trama DISC enviada!\n");
+            if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
+                printf("trama DISC enviada!\n");
         }
         
         //Verificar e receber a trama DISC
@@ -461,11 +509,13 @@ int llclose_sender(int fd)
                     done = 1;
                     free(disc); // liberta a memoria
                     
-                    printf("Trama DISC recebida!\n");
+                    if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
+                        printf("Trama DISC recebida!\n");
                 }
                 else
                 {
-                    printf("Erro no cabecalho da trama DISC\n");
+                    if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
+                        printf("Erro no cabecalho da trama DISC\n");
                 }
             }
         }
@@ -475,13 +525,19 @@ int llclose_sender(int fd)
         
     unsigned char* ua = build_frame_SU(UA,FRAME_A1);
 	
-    /*printf("llclose_sender UA antes do sfuffing\n");
-    display(ua, FRAME_SIZE);*/
+    if(data_link.mode == FULL_DEBUG)
+    {
+        printf("llclose_sender UA antes do sfuffing\n");
+        display(ua, FRAME_SIZE);
+    }
 	
     int newsizeUA = stuff(ua, FRAME_SIZE);
 	
-    /*printf("llclose_sender UA depois do sfuffing\n");
-    display(ua, newsizeUA);*/
+    if(data_link.mode == FULL_DEBUG)
+    {
+        printf("llclose_sender UA depois do sfuffing\n");
+        display(ua, newsizeUA);
+    }
 	
     //ENVIA UMA TRAMA DO TIPO UA
     if((res = write(fd,ua, newsizeUA)) == -1)
@@ -489,7 +545,8 @@ int llclose_sender(int fd)
         perror("Erro na escrita write()");
         return -1;
     }
-    printf("trama UA enviada!\n");
+    if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
+        printf("trama UA enviada!\n");
     
     alarm(0);
     return 0;
@@ -504,14 +561,20 @@ int llclose_receiver(int fd)
     Message* msg = (Message*)malloc(sizeof(Message));
 	
     unsigned char* disc = build_frame_SU(DISC,FRAME_A1);
-	
-    /*printf("llclose_receiver DISC antes do sfuffing\n");
-    display(disc, FRAME_SIZE);*/
+
+    if(data_link.mode == FULL_DEBUG)
+    {
+        printf("llclose_receiver DISC antes do sfuffing\n");
+        display(disc, FRAME_SIZE);
+    }
     
     int newsize = stuff(disc,FRAME_SIZE);
-	
-   /* printf("llclose_receiver DISC depois do sfuffing\n");
-    display(disc, newsize);*/
+
+    if(data_link.mode == FULL_DEBUG)
+    {
+        printf("llclose_receiver DISC depois do sfuffing\n");
+        display(disc, newsize);
+    }
 
     while(!done)
     {
@@ -533,11 +596,13 @@ int llclose_receiver(int fd)
                     if(msg->controlAdress == 3)
                     {
                         tries++;
-                        printf("Trama DISC recebida!\n");  
+                        if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
+                            printf("Trama DISC recebida!\n");  
                     }
                     else
                     {
-                        printf("Erro no cabecalho da trama DISC\n");
+                        if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
+                            printf("Erro no cabecalho da trama DISC\n");
                     }
                 }
             }
@@ -553,7 +618,9 @@ int llclose_receiver(int fd)
             //ativa o alarme
             alarm(data_link.timeout);  
             retry = 0;
-            printf("trama DISC enviada!\n");
+            
+            if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
+                printf("trama DISC enviada!\n");
             
             ret = receive(fd,msg);
             
@@ -565,11 +632,14 @@ int llclose_receiver(int fd)
                     {
                         free(disc);
                         done = 1;
-                        printf("trama UA recebida\n");
+                        
+                        if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
+                            printf("trama UA recebida\n");
                     }
                     else
                     {
-                        printf("Erro no cabecalho da trama UA\n");
+                        if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
+                            printf("Erro no cabecalho da trama UA\n");
                     }
                 }
             }

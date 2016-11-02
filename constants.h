@@ -32,13 +32,13 @@
 #define PKG_END			3
 
 #define DATA_SIZE 		114
-#define MAX_PKG_SIZE	124
+#define MAX_PKG_SIZE		124
 
 #define RECEIVER		1
 #define TRANSMITTER		0
 
 #define NORMAL			0
-#define SIMPLE_DEBUG	1
+#define SIMPLE_DEBUG		1
 #define FULL_DEBUG		2
 
 static int BAUDRATE =  B9600;  

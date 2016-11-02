@@ -482,7 +482,7 @@ int initApplicationLayer(unsigned char *port, int status, int mode,unsigned char
   memcpy(infoLayer.file_path, file_path, strlen(file_path));
 
   //inicializa o dataLink
-  init_linkLayer(port);
+  init_linkLayer(port,infoLayer.mode);
 
   if((infoLayer.fileDescriptor = llopen(port,status)) == -1){
     printf("Could not open connection\n");

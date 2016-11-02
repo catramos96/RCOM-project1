@@ -168,13 +168,19 @@ ReturnType receive(int fd, Message *msg)
 
    buf = (unsigned char*)realloc(buf,size);  //realloc para o tamanho certo da trama
 
-   //printf("Receive antedo destuffing\n");
-   //display(buf,size);
+   if(data_link.mode == FULL_DEBUG)
+    {
+        printf("Receive antedo destuffing\n");
+        display(buf,size);
+    }
   
    int newsize = destuff(buf,size);   //recebe com stuff, fazemos destuffing
    
-   //printf("Receive depois do destuffing\n");
-   //display(buf,newsize); 
+    if(data_link.mode == FULL_DEBUG)
+    {
+        printf("Receive depois do destuffing\n");
+        display(buf,newsize); 
+    }
   
    //---- Comeca a parte de analise da trama ----//
    
@@ -189,10 +195,11 @@ ReturnType receive(int fd, Message *msg)
        unsigned int ns = (buf[2]) >> 6;
        if(ns != data_link.sequenceNumber)
        {
-           printf("WARNING: ocorreu uma retransmissao\n");
-		   
-		   msg->type = setControlField(buf[2]);    //recebe o controlField
-		   
+           if(data_link.mode == SIMPLE_DEBUG)
+                printf("WARNING: ocorreu uma retransmissao\n");
+        
+            msg->type = setControlField(buf[2]);    //recebe o controlField
+            
            msg->isRetransmission = 1;	// e uma retransmissao 
 
            statistics.tramasIretransmitidas++;
@@ -267,7 +274,8 @@ unsigned char getControlField(ControlFieldType flag)
         return (data_link.sequenceNumber << 6); //o controlo depende do sequenceNumber
     }
     else
-        printf("Erro no cabecalho a receber a trama\n");
+        if(data_link.mode == SIMPLE_DEBUG)
+            printf("Erro no cabecalho a receber a trama\n");
     
 }
 
@@ -292,7 +300,8 @@ ControlFieldType setControlField(unsigned char c){
         return I;
     }
     else
-        printf("Erro no cabecalho a receber a trama\n");
+        if(data_link.mode == SIMPLE_DEBUG)
+            printf("Erro no cabecalho a receber a trama\n");
 }
 
 /**

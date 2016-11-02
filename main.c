@@ -23,7 +23,7 @@ int main(int argc, char** argv)
     printf("\nSTATUS:\n  Transmitter (0)\n  Receiver (1)\n");
     scanf("%s", status);
 
-    printf("\nMODE:\n  Normal (0)\n  Simple Debug (1)\n  Full Debug(3)\n");
+    printf("\nMODE:\n  Normal (0)\n  Simple Debug (1)\n  Full Debug(2)\n");
     scanf("%s", mode);
 	
     printf("\nPATH:\n  Receiver - Path to keep the fille\n  Transmitter - Path of the file to be sent\n");
@@ -49,21 +49,21 @@ int main(int argc, char** argv)
 */	
 
 	//inicializar struct estatisticas	
-	statistics.tramasIenviadas=0;
-	statistics.tramasIretransmitidas=0;
-	statistics.tramasIrecebidas=0;
-	statistics.timeouts=0;
-	statistics.REJenviados=0;
-	statistics.REJrecebidos=0;
+    statistics.tramasIenviadas=0;
+    statistics.tramasIretransmitidas=0;
+    statistics.tramasIrecebidas=0;
+    statistics.timeouts=0;
+    statistics.REJenviados=0;
+    statistics.REJrecebidos=0;
 
     initApplicationLayer(port,atoi(status),atoi(mode),path);
 	
-	printf("Number of I frames sent: %d\n",statistics.tramasIenviadas);
-	printf("Number of I frames retransmissioned: %d\n",statistics.tramasIretransmitidas);
-	printf("Number of I frames received: %d\n",statistics.tramasIrecebidas);
-	printf("Number of timeouts: %d\n",statistics.timeouts);
-	printf("Number of REJ frames sent: %d\n",statistics.REJenviados);
-	printf("Number of REJ frames received: %d\n",statistics.REJrecebidos);
+    printf("Number of I frames sent: %d\n",statistics.tramasIenviadas);
+    printf("Number of I frames retransmissioned: %d\n",statistics.tramasIretransmitidas);
+    printf("Number of I frames received: %d\n",statistics.tramasIrecebidas);
+    printf("Number of timeouts: %d\n",statistics.timeouts);
+    printf("Number of REJ frames sent: %d\n",statistics.REJenviados);
+    printf("Number of REJ frames received: %d\n",statistics.REJrecebidos);
 	
 	
     return 0;
@@ -94,7 +94,7 @@ void test_link(int total, char*a, char*b)
     }
 
     //inicializa o dataLink
-    init_linkLayer(a); 
+    init_linkLayer(a,0); 
 
     int isReceiver = 1;
     if(strcmp("TRANSMITTER",b)==0) isReceiver=0;
