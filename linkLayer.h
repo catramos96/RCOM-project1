@@ -63,7 +63,7 @@ typedef enum {
     ERROR, DATAERROR, OK, EMPTY
 } ReturnType;
 
-
+static dataLink data_link;
 
 typedef struct
 {
@@ -114,8 +114,4 @@ int stuff(unsigned char *frame, int frame_length);
 int destuff(unsigned char *frame, int frame_length);
 
 void display(unsigned char *frame, int n);
-
-void displayStatistics(int status);
-
-void initStatistics();
 

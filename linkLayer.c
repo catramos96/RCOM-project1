@@ -1,6 +1,5 @@
 #include "linkLayer.h"
 
-static dataLink data_link;
 struct termios oldtio, newtio;
 int retry = 0;
 
@@ -244,7 +243,7 @@ int llwrite(int fd, unsigned char * buffer, int length)
     int n_written = 0;
     int done = 0;
     int res;
-
+    
     //criacao da trama I
     unsigned char *frame_i = build_frame_I(buffer,length);  
     int size = length+FRAME_SIZE+1;
@@ -271,6 +270,7 @@ int llwrite(int fd, unsigned char * buffer, int length)
     {
         if(tries == 0 || retry) //só envia a trama se : for a primeira tentativa ou o alarme disparar
         {
+        
             if(tries >= data_link.numTransmissions)
             {
                 printf("Numero de tentativas excedida!\n");
@@ -340,9 +340,9 @@ int llread(int fd, unsigned char * buffer)
     int send = 0;
     
     //rececao da trama I (read) com verificacao de erros e desstuffing
-    Message* msg = (Message*)malloc(sizeof(Message));
+    Message* msg;
 
-    alarm(data_link.timeout );
+    alarm(data_link.timeout);
     retry = 0;
     
     while(!done)
@@ -351,6 +351,9 @@ int llread(int fd, unsigned char * buffer)
             return -1;
     	}
     	
+    	msg = (Message*)malloc(sizeof(Message));
+    	
+    	//memset(msg,0,sizeof(Message));
         ReturnType ret = receive(fd,msg);
 
         if(ret == ERROR)
@@ -401,7 +404,7 @@ int llread(int fd, unsigned char * buffer)
             }
         	
             //envia a trama RR/REJ
-            if((res = write(fd,frame,newsize)) == -1)    //Envio da Trama I0
+            if((res = write(fd,frame,newsize)) == -1)   
             {
                 perror("write llread");
                 return -1;

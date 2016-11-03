@@ -38,9 +38,7 @@
 #define SIMPLE_DEBUG		1
 #define FULL_DEBUG		2
 
-#define BAUDRATE  B9600;  
-
-
+static int BAUDRATE =  B9600;  
 unsigned int RETRANSMITIONS;
 unsigned int TIMEOUT;
 unsigned int DATA_SIZE;

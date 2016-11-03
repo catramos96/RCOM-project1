@@ -1,7 +1,7 @@
 #include "applicationLayer.h"
 
-static unsigned char sequenceNumber = 1;
 static struct applicationLayer infoLayer;
+static unsigned char sequenceNumber = 1;
 
 int getFileSize(int file_descriptor){
   int size = 0, current_pos = 0;
@@ -141,8 +141,8 @@ int sendDataPackage(unsigned char * data,unsigned int size)
 
   pkg[0] = PKG_DATA;
   pkg[1] = sequenceNumber;
-  pkg[2] = size/DATA_SIZE;                  //L2
-  pkg[3] = size-DATA_SIZE*pkg[2];             //L1    SizeT = L2*DataSize + L1
+  pkg[2] = size/256;                  //L2
+  pkg[3] = size-256*pkg[2];             //L1    SizeT = L2*DataSize + L1
   memcpy(pkg + 4,data,size);
 
   if(infoLayer.mode == SIMPLE_DEBUG || infoLayer.mode == FULL_DEBUG){
@@ -226,7 +226,7 @@ int receiveDataPackage(struct package *p, unsigned char * data)
 
   p->number = data[i++];
 
-  n2 = data[i++]*DATA_SIZE;
+  n2 = data[i++]*256;
   n1 = data[i++];
 
   p->size = n2+n1;
@@ -252,8 +252,8 @@ int receiveDataPackage(struct package *p, unsigned char * data)
 
 int receivePackage(struct package *p)
 {
-  unsigned char* data = malloc(MAX_PKG_SIZE);
-  memset(data,0,MAX_PKG_SIZE);
+  unsigned char* data = malloc(256);
+  memset(data,0,256);
 
   if(llread(infoLayer.fileDescriptor,data) == -1){
     //printf("Could not read\n");
@@ -368,7 +368,7 @@ int receiver(unsigned char *path){
   int file;
 
   struct package pkg;
-  pkg.data = malloc(DATA_SIZE);
+  pkg.data = malloc(255);
 
   if(receivePackage(&pkg)){
     printf("Error at receiving the START package\n");
@@ -416,7 +416,7 @@ int receiver(unsigned char *path){
   while(1){
         
     written = 0;
-    memset(pkg.data,0,DATA_SIZE);
+    memset(pkg.data,0,255);
     if(receivePackage(&pkg) == -1){
       printf("Could not receive DATA package\n");
       return -1;

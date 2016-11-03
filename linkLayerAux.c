@@ -191,6 +191,8 @@ ReturnType receive(int fd, Message *msg)
    {  
        if(msg->controlAdress == FRAME_A1)    return OK;  //erro de cabecalho
        
+        msg->isRetransmission = 0;
+        
        //analisar o sequence number => se recebe diferente ao que está guardado e porque ocorreu uma retransmissao
        unsigned int ns = (buf[2]) >> 6;
        if(ns != data_link.sequenceNumber)
@@ -198,6 +200,8 @@ ReturnType receive(int fd, Message *msg)
            if(data_link.mode == SIMPLE_DEBUG)
                 printf("WARNING: ocorreu uma retransmissao\n");
         
+        	data_link.sequenceNumber ^= 1;
+        	
             msg->type = setControlField(buf[2]);    //recebe o controlField
             
            msg->isRetransmission = 1;	// e uma retransmissao 
@@ -209,8 +213,6 @@ ReturnType receive(int fd, Message *msg)
             msg->type = setControlField(buf[2]);    //recebe o controlField antes de mudar o sequenceNumber
             
             data_link.sequenceNumber ^= 1;  //atualiza o sequenceNumber (receiver)
-            
-            msg->isRetransmission = 0;
         
             msg->message_size = newsize - FRAME_SIZE - 1; //-1 por causa da proteção dupla	
 

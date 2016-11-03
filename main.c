@@ -18,9 +18,7 @@ TIMEOUT=1;
         exit(1);
     }
     
-
-    unsigned char port[20], path[128];
-    char status[2], mode[2];
+    char port[20], status[2], mode[2], path[128], max_size[8];
 	
     printf("\nPORT:\n  /dev/ttyS0\n  /dev/ttyS1\n");
     scanf("%s", port);
@@ -34,9 +32,14 @@ TIMEOUT=1;
     printf("\nPATH:\n  Receiver - Path to keep the fille\n  Transmitter - Path of the file to be sent\n");
     scanf("%s",path);
 
-    printf("\nMAX PACKAGE SIZE:\n");
-    scanf("%s",max_size);
-    printf("\n\n");
+	if(atoi(status) == 0){
+	    printf("\nMAX PACKAGE SIZE:\n");
+   		scanf("%s",max_size);
+    	printf("\n\n");
+	}
+	else{
+		strcpy(max_size, "255");
+	}
 	
 /*
         printf("Baud rate (Write 0 for default value): ");
@@ -61,12 +64,11 @@ TIMEOUT=1;
 	printf("Total timeout: ");
 	scanf("%d",&TIMEOUT);	
 	}
-
 	
 initStatistics();
 
 
-    initApplicationLayer(port,atoi(status),atoi(mode),path);
+    initApplicationLayer(port,atoi(status),atoi(mode),atoi(max_size),path);
 	
    
 displayStatistics(atoi(status));
@@ -114,7 +116,6 @@ void test_application(char *a)
 /*
 * Link layer
 */
-/*
 void test_link(int total, char*a, char*b)
 {
     if ( (total < 3) || 
@@ -145,14 +146,13 @@ void test_link(int total, char*a, char*b)
     
     llclose(fd,isReceiver);
 }
-*/
+
 /*
 * Teste BYTE stuffing
 */
-/*
 void test_byteStuffing()
 {
-    unsigned char *info = NULL;
+    char *info = NULL;
     
     char *data = "a]}[b^c}}}~d";
     int data_length = 12;
@@ -183,4 +183,3 @@ void test_byteStuffing()
         printf("%c\n",info[i]);
     }
 }
-*/

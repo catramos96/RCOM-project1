@@ -33,7 +33,6 @@ struct package{
 	int file_perm;
 };
 
-
 int getFileSize(int file_descriptor);
 
 int sendControlPackage(unsigned char control, unsigned char * filename, unsigned char * filesize, unsigned char * date, unsigned char * permissions);
