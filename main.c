@@ -1,17 +1,14 @@
 #include "applicationLayer.h"
 
 /**
- * Recebe as informações iniciais.
- * porta
- * flag: TRANSMITTER | RECEIVER
- * file				//por agora ainda nao
+ * Inicializacao da aplicacao. 
+ * Recebe os dados do utilizador e inicializa e imprime as estatisticas.
  */
 int main(int argc, char** argv)
 {	
-
-RETRANSMITIONS=3;
-TIMEOUT=1;
-   ///testar application applicationLayer
+	RETRANSMITIONS=3;
+	TIMEOUT=1;
+   
     if(argc != 1)
     {
         perror("Invalid number of arguments");
@@ -20,66 +17,52 @@ TIMEOUT=1;
     
     char port[20], status[2], mode[2], path[128], max_size[8];
 	
-    printf("\nPORT:\n  /dev/ttyS0\n  /dev/ttyS1\n");
+    printf("\nPort:\n  /dev/ttyS0\n  /dev/ttyS1\n");
     scanf("%s", port);
 	
-    printf("\nSTATUS:\n  Transmitter (0)\n  Receiver (1)\n");
+    printf("\nStatus:\n  Transmitter (0)\n  Receiver (1)\n");
     scanf("%s", status);
 
-    printf("\nMODE:\n  Normal (0)\n  Simple Debug (1)\n  Full Debug(2)\n");
+    printf("\nMode:\n  Normal (0)\n  Simple Debug (1)\n  Full Debug(2)\n");
     scanf("%s", mode);
 	
-    printf("\nPATH:\n  Receiver - Path to keep the fille\n  Transmitter - Path of the file to be sent\n");
+    printf("\nPath:\n  Receiver - Path to keep the fille\n  Transmitter - Path of the file to be sent\n");
     scanf("%s",path);
 
-	if(atoi(status) == 0){
-	    printf("\nMAX PACKAGE SIZE:\n");
+	if(atoi(status) == TRANSMITTER)
+	{
+	    printf("\nMax package size:\n");
    		scanf("%s",max_size);
-    	printf("\n\n");
+		
+		printf("\nMaximum retransmissions: ");
+		scanf("%d",&RETRANSMITIONS);
+		
+		printf("Timeout for retransmissions: ");
+		scanf("%d",&TIMEOUT);
 	}
-	else{
+	else	//receiver
+	{
+		printf("\nTotal timeout: ");
+		scanf("%d",&TIMEOUT);
+		
 		strcpy(max_size, "255");
 	}
 	
-/*
-        printf("Baud rate (Write 0 for default value): ");
-	scanf("%d", BAUDRATE);
-	if(BAUDRATE==0)
-		BAUDRATE=B9600;
-	
-	printf("Maximum frame size (Write 0 for default value): ");
-	scanf("%d",BUF_SIZE);
-	if(BUF_SIZE==0)
-		BUF_SIZE=126;
-	*/
-	if((atoi(status))==0)
-	{
-	printf("Maximum retransmissions: ");
-	scanf("%d",&RETRANSMITIONS);
-	printf("Timeout for retransmissions: ");
-	scanf("%d",&TIMEOUT);	
-	}
-	else
-	{
-	printf("Total timeout: ");
-	scanf("%d",&TIMEOUT);	
-	}
-	
-initStatistics();
+	initStatistics();
 
-
+	//inicializacao da aplicacao
     initApplicationLayer(port,atoi(status),atoi(mode),atoi(max_size),path);
-	
-   
-displayStatistics(atoi(status));
-	
+	 
+	displayStatistics(atoi(status));
 	
     return 0;
 }
 
+/**
+ * inicializar struct estatisticas.
+ */
 void initStatistics()
 {
-	//inicializar struct estatisticas	
     statistics.tramasIenviadas=0;
     statistics.tramasIretransmitidas=0;
     statistics.tramasIrecebidas=0;
@@ -88,34 +71,40 @@ void initStatistics()
     statistics.REJrecebidos=0;
 }
 
+/**
+ * Display das estatisticas recolhidas ao longo do programa.
+ */
 void displayStatistics(int status)
 {
-if(status==0)	//TRANSMITTER
-{
-    printf("Number of I frames sent: %d\n",statistics.tramasIenviadas);
-    printf("Number of timeouts: %d\n",statistics.timeouts);
-    printf("Number of REJ frames received: %d\n",statistics.REJrecebidos);
-}
-else{
-    printf("Number of I frames received: %d\n",statistics.tramasIrecebidas);
-    printf("Number of I frames retransmissioned: %d\n",statistics.tramasIretransmitidas);
+	if(status == TRANSMITTER)	//TRANSMITTER
+	{
+		printf("Number of I frames sent: %d\n",statistics.tramasIenviadas);
+		printf("Number of timeouts: %d\n",statistics.timeouts);
+		printf("Number of REJ frames received: %d\n",statistics.REJrecebidos);
+	}
+	else	//RECEIVER
+	{
+		printf("Number of I frames received: %d\n",statistics.tramasIrecebidas);
+		printf("Number of I frames retransmissioned: %d\n",statistics.tramasIretransmitidas);
         printf("Number of REJ frames sent: %d\n",statistics.REJenviados);
-
-}
+	}
 }
 
 /**
  * application Layer
  */
+/*
 void test_application(char *a)
 {
     //a-> porta, argv2 -> transmitter/receiver argv3->path
-    //sender(0,a);
+    sender(0,a);
 }
-
-/*
-* Link layer
 */
+
+/**
+ * Link layer
+ */
+ /*
 void test_link(int total, char*a, char*b)
 {
     if ( (total < 3) || 
@@ -146,10 +135,13 @@ void test_link(int total, char*a, char*b)
     
     llclose(fd,isReceiver);
 }
-
-/*
-* Teste BYTE stuffing
 */
+
+/** 
+ * Teste BYTE stuffing
+ */
+ 
+ /*
 void test_byteStuffing()
 {
     char *info = NULL;
@@ -183,3 +175,4 @@ void test_byteStuffing()
         printf("%c\n",info[i]);
     }
 }
+*/
