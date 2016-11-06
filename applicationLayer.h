@@ -33,9 +33,9 @@ struct package{
 	int file_perm;
 };
 
-int getFileSize(int file_descriptor);
+int sendStartPackage(unsigned char * file_name, unsigned char * file_size, unsigned char * file_date, unsigned char * file_perm);
 
-int sendControlPackage(unsigned char control, unsigned char * filename, unsigned char * filesize, unsigned char * date, unsigned char * permissions);
+int sendEndPackage();
 
 int sendDataPackage(unsigned char *data, unsigned int size);
 
