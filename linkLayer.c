@@ -4,8 +4,8 @@ struct termios oldtio, newtio;
 int retry = 0;
 
 /**
-* Inicializacao do layerLink
-*/
+ * Inicializacao da struct data_link
+ */
 void init_linkLayer(unsigned char* port, unsigned int mode)
 {
     strcpy(data_link.port, port);
@@ -16,6 +16,9 @@ void init_linkLayer(unsigned char* port, unsigned int mode)
     data_link.mode = mode;
 }
 
+/**
+ * Handler para o alarme.
+ */
 void handler()
 {
     if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
@@ -24,11 +27,12 @@ void handler()
     retry = 1;
 }
 
-/*
-* @param porta 
-* @param flag TRANSMITTER / RECEIVER
-* @return identificador da ligação de dados ; valor negativo em caso de erro
-*/
+/**
+ * Inicializa a struct newtio, e abre o file descriptor correspondente a porta.
+ * @param port
+ * @param flag TRANSMITTER / RECEIVER
+ * @return identificador da ligação de dados ; valor negativo em caso de erro
+ */
 int llopen(unsigned char* port, int isReceiver)
 {
     int fd,c,res;
@@ -66,18 +70,18 @@ int llopen(unsigned char* port, int isReceiver)
         return -1;
     }
 
-    if(isReceiver)
-    {
-        if(llopen_receiver(fd) == -1) return -1;
-    }
-    else
-    {
-        if(llopen_sender(fd) == -1) return -1;
-    }
+	//invoca o método adequado
+    if(isReceiver)	
+		return llopen_receiver(fd);
+	
+    return llopen_sender(fd);
     
-    return fd;
 }
 
+/**
+ * Metodo invocado pelo llopen para a maquina recetora.
+ * Recebe tramas do tipo SET e envia do tipo UA.
+ */
 int llopen_receiver(int fd)
 {
     int res;
@@ -116,6 +120,7 @@ int llopen_receiver(int fd)
         display(ua, FRAME_SIZE);
     }
 
+	//faz stuff da trama 
     int newsize = stuff(ua, FRAME_SIZE);
 
     if(data_link.mode == FULL_DEBUG)
@@ -133,9 +138,14 @@ int llopen_receiver(int fd)
     if(data_link.mode == SIMPLE_DEBUG  || data_link.mode == FULL_DEBUG)
         printf("trama UA enviada! \n");
 
-    return 0;
+    return fd;
 }
 
+/** 
+ * Metodo invocado pelo metodo llopen pela maquina emissora.
+ * Cria e envia tramas do tipo SET e recebe do tipo UA.
+ * Se recebida com sucesso, a comunicacao e estabelecida.
+ */
 int llopen_sender(int fd)
 {
     signal(SIGALRM, handler);  // instala  rotina que atende interrupcao
@@ -200,20 +210,20 @@ int llopen_sender(int fd)
                 return -1;
             else
             {
-                //verifica o tipo da mensagem
+                //verifica o tipo da mensagem (UA com campo de endereco 3)
                 if(msg->type == UA)
                 {
-                    if(msg->controlAdress == 3)
+                    if(msg->controlAdress == FRAME_A3)
                     {
-                        done = 1;
+                        done = 1;	//termina o ciclo
                         free(set); // liberta a memoria da trama criada
                         
                         if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
                             printf("trama UA recebida!\n");
                     }
-                    else
+                    else	//erro no cabecalho
                     {
-                        retry = 1;
+                        retry = 1;	//para o alarme
                         
                         if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
                             printf("Erro no cabecalho da trama UA\n");
@@ -225,17 +235,19 @@ int llopen_sender(int fd)
     
     alarm(0);
     free(msg);
-    return 0;
+	
+    return fd;
 }
 
 
-/*
-* Usado pelo TRANSMITTER
-* @param fd identificador da ligação de dados
-* @param buffer array de caracteres a transmitir 
-* @param length  comprimento do array de caracteres 
-* @return número de caracteres escritos ; valor negativo em caso de erro
-*/
+/**
+ * Usado pela maquina emissora. Recebe um pacote e cria uma trama do tipo I. De seguida envia-a e espera pela resposta RR(sucesso) ou REJ(erro no bcc2).
+ * Ciclo protegido por timeouts e numero maximo de retransmisssoes.
+ * @param fd identificador da ligação de dados
+ * @param buffer array de caracteres a transmitir 
+ * @param length  comprimento do array de caracteres 
+ * @return número de caracteres escritos ; valor negativo em caso de erro
+ */
 int llwrite(int fd, unsigned char * buffer, int length)
 {
     (void) signal(SIGALRM, handler);  // instala  rotina que atende interrupcao
@@ -246,7 +258,7 @@ int llwrite(int fd, unsigned char * buffer, int length)
     
     //criacao da trama I
     unsigned char *frame_i = build_frame_I(buffer,length);  
-    int size = length+FRAME_SIZE+1;
+    int size = length + FRAME_SIZE + 1;	//frame_size e o tamanho de uma trama normal (5) + 1 para o campo de controlo duplo da trama I
     
     if(data_link.mode == FULL_DEBUG)
     {
@@ -254,6 +266,7 @@ int llwrite(int fd, unsigned char * buffer, int length)
         display(frame_i, size);
     }
     
+	//stuff
     int newsize = stuff(frame_i,size);
     
     if(data_link.mode == FULL_DEBUG)
@@ -264,27 +277,26 @@ int llwrite(int fd, unsigned char * buffer, int length)
 
     Message* msg = (Message*)malloc(sizeof(Message));
         
-    //envio da trama I(0) (write)
+    //envio da trama I (write)
     //rececao da trama RR / REJ (read)
     while(!done)
     {
         if(tries == 0 || retry) //só envia a trama se : for a primeira tentativa ou o alarme disparar
         {
-        
             if(tries >= data_link.numTransmissions)
             {
                 printf("Numero de tentativas excedida!\n");
                 return -1;
             }
-            if((n_written = write(fd,frame_i,newsize)) == -1)    //Envio da Trama I0
+            if((n_written = write(fd,frame_i,newsize)) == -1)    //Envio da Trama I
             {
                 perror("Erro de escrita em write()");
                 return -1;
             }
             //ativa o alarme
             alarm(data_link.timeout);  
-            retry = 0;
-            tries++;
+            retry = 0;	//liga o alarme
+            tries++;	//mais uma tentativa
             
             if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
                 printf("Trama I enviada !\n");
@@ -292,25 +304,25 @@ int llwrite(int fd, unsigned char * buffer, int length)
             statistics.tramasIenviadas++;
         }
         
-        //Verificar e receber a trama RR OU REJ com Nr = 1
+        //Verificar e recebe a trama RR OU REJ
         ReturnType ret = receive(fd,msg);
         
         if(ret == ERROR)   
             return -1;
-        else if(ret != EMPTY)
+        else if(ret != EMPTY)	//significa que esta a ser lido qualquer coisa
         {
             //verifica o tipo da mensagem
-            if(msg->type == RR)
+            if(msg->type == RR)	//sem erros
             {
-                done = 1;
+                done = 1;	//termina o ciclo
                 free(frame_i);
                 
                 if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
                     printf("Trama RR recebida!\n");
             }
-            else if(msg->type == REJ)
+            else if(msg->type == REJ)	//erro no bcc2
             {
-                retry = 1;
+                retry = 1;	//para o alarme
                 
                 if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
                     printf("Trama REJ recebida\n");
@@ -321,15 +333,18 @@ int llwrite(int fd, unsigned char * buffer, int length)
     
     alarm(0);
     free(msg);
+	
     return n_written;
 }
 
 
-/*
-* @param fd identificador da ligação de dados
-* @param buffer array de caracteres recebidos 
-* @return comprimento do array (número de caracteres lidos) ; valor negativo em caso de erro
-*/
+/**
+ * Metodo invocado pela maquina recetora. Recebe tramas do tipo I e cria/envia tramas do tipo RR ou REJ.
+ * Ciclo protegido por um temporizador de tempo maximo disponivel para realizar o metodo.
+ * @param fd identificador da ligação de dados
+ * @param buffer array de caracteres recebidos 
+ * @return comprimento do array (número de caracteres lidos) ; valor negativo em caso de erro
+ */
 int llread(int fd, unsigned char * buffer)
 {
     (void) signal(SIGALRM, handler);  // instala  rotina que atende interrupcao
@@ -339,7 +354,6 @@ int llread(int fd, unsigned char * buffer)
     int done = 0;
     int send = 0;
     
-    //rececao da trama I (read) com verificacao de erros e desstuffing
     Message* msg;
 
     alarm(data_link.timeout);
@@ -347,38 +361,37 @@ int llread(int fd, unsigned char * buffer)
     
     while(!done)
     {
-    	if(retry){
+		//relacionado com o temporizador global
+    	if(retry)
             return -1;
-    	}
     	
+		//rececao da trama I (read)
     	msg = (Message*)malloc(sizeof(Message));
-    	
-    	//memset(msg,0,sizeof(Message));
         ReturnType ret = receive(fd,msg);
 
         if(ret == ERROR)
             return -1;
-        else if(ret == DATAERROR)
+        else if(ret == DATAERROR)	//erro no bcc2
         {
             frame = build_frame_SU(REJ,FRAME_A3);   // constroi a trama REJ se erros nos dados
-            send = 1;
+            send = 1;	//envia a trama
             statistics.REJenviados++;
             
             if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
                 printf("Data error receiving frame I (bcc2) !\n");
         }
-        else if(ret == OK)
+        else if(ret == OK)	//esta a receber alguma coisa
         { 
-            if(msg->type == I)
+            if(msg->type == I)	//trama do tipo I
             {
                 if(!msg->isRetransmission)  //se nao for uma retransmissao, copia a mensagem para o buffer 
                 {
                     memcpy(buffer, &msg->message,msg->message_size);//destination, source, num B
-                    done = 1;   //duvida => nao devia estar do lado de fora?
+                    done = 1;   //termina o ciclo
                 }
                 
                 frame = build_frame_SU(RR,FRAME_A3);  //criacao da trama RR
-                send = 1;
+                send = 1;	//envia a trama
                 
                 if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
                     printf("Trama I recebida!\n");  //caso de sucesso
@@ -387,7 +400,7 @@ int llread(int fd, unsigned char * buffer)
             }
         }
 
-        if(send)
+        if(send)	//permissao para enviar a trama
         {
             if(data_link.mode == FULL_DEBUG)
             {
@@ -395,6 +408,7 @@ int llread(int fd, unsigned char * buffer)
                 display(frame,FRAME_SIZE);
             }
         
+			//stuff
             int newsize = stuff(frame,FRAME_SIZE);
           
             if(data_link.mode == FULL_DEBUG)
@@ -409,7 +423,7 @@ int llread(int fd, unsigned char * buffer)
                 perror("write llread");
                 return -1;
             }
-            send = 0;
+            send = 0;	//termina a permissao para enviar tramas
             
             if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
                 printf("Trama RR/REJ enviada!\n");
@@ -419,9 +433,16 @@ int llread(int fd, unsigned char * buffer)
     
     free(msg);
     alarm(0);
+	
     return 0;
 }
 
+/**
+ * Metodo que repoe os valores da estrutura.
+ * @param fd File descriptor
+ * @param isReceiver Flag que indica qual e a maquina (emissora ou recetora)
+ * @return -1 se erro ou 0 se sucesso.
+ */
 int llclose(int fd, int isReceiver)
 {
     int ret=0;
@@ -435,22 +456,29 @@ int llclose(int fd, int isReceiver)
             ret = llclose_receiver(fd);
             break;
         default:
-            //printf("Segundo argumento errado, apenas use 1 se for o receiver e 0 para o sender");
             return -1;
     }
     
-    sleep(1);
+    sleep(1);	//assegurar que nao ha problemas
     
+	//repor definicoes
     if ( tcsetattr(fd,TCSANOW,&oldtio) == -1)
     {
         perror("tcsetattr");
         return -1;
     }
 
+	//fechar a porta
     close(fd);
     return ret; //retorna 0 se correr sem problemas
 }
 
+/**
+ * Metodo invocado pelo llclose para a maquina emissora. 
+ * Envia tramas do tipo DISC, recebe outra do tipo DISC e de seguida recebe do tipo UA.
+ * @param fd 
+ * @return 0 se sucesso ou -1 se temerros.
+ */
 int llclose_sender(int fd)
 {
     (void) signal(SIGALRM, handler);  // instala  rotina que atende interrupcao
@@ -458,6 +486,7 @@ int llclose_sender(int fd)
     
     Message* msg = (Message*)malloc(sizeof(Message));
 	
+	//construcao da trama DISC
     unsigned char* disc = build_frame_SU(DISC,FRAME_A3);
 	
     if(data_link.mode == FULL_DEBUG)
@@ -466,6 +495,7 @@ int llclose_sender(int fd)
         display(disc, FRAME_SIZE);
     }
 	
+	//stuff
     int newsize = stuff(disc, FRAME_SIZE);
 	
     if(data_link.mode == FULL_DEBUG)
@@ -489,8 +519,8 @@ int llclose_sender(int fd)
                 perror("Erro na escrita write()");
                 return -1;
             }
-            //ativa o alarme
             
+			//ativa o alarme
             alarm(data_link.timeout);  
             retry = 0;
             tries++;
@@ -504,19 +534,19 @@ int llclose_sender(int fd)
         
         if(ret == ERROR)    
             return -1;
-        else if(ret != EMPTY)
+        else if(ret != EMPTY)	//esta a receber alguma coisa
         {
-            if(msg->type == DISC)
+            if(msg->type == DISC)	//trama do tipo disc com o campo de endereco a 1
             {
-                if(msg->controlAdress == 1)
+                if(msg->controlAdress == FRAME_A1)
                 {
-                    done = 1;
+                    done = 1;	//termina o ciclo
                     free(disc); // liberta a memoria
                     
                     if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
                         printf("Trama DISC recebida!\n");
                 }
-                else
+                else	//erro de cabecalho
                 {
                     if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
                         printf("Erro no cabecalho da trama DISC\n");
@@ -527,6 +557,7 @@ int llclose_sender(int fd)
     
     free(msg);
         
+	//controi trama do tipo UA
     unsigned char* ua = build_frame_SU(UA,FRAME_A1);
 	
     if(data_link.mode == FULL_DEBUG)
@@ -535,6 +566,7 @@ int llclose_sender(int fd)
         display(ua, FRAME_SIZE);
     }
 	
+	//stuff
     int newsizeUA = stuff(ua, FRAME_SIZE);
 	
     if(data_link.mode == FULL_DEBUG)
@@ -543,7 +575,7 @@ int llclose_sender(int fd)
         display(ua, newsizeUA);
     }
 	
-    //ENVIA UMA TRAMA DO TIPO UA
+    //envia trama do tipo UA
     if((res = write(fd,ua, newsizeUA)) == -1)
     {
         perror("Erro na escrita write()");
@@ -556,6 +588,12 @@ int llclose_sender(int fd)
     return 0;
 }
 
+/**
+ * Metodo invocado pelo llclose para a maquina recetora. 
+ * Recebe uma trama do tipo DISC e confirma com o envio de outra do tipo DISC. No fim recebe uma trama do tipo UA.
+ * @param fd 
+ * @return 0 se sucesso ou -1 se tem Serros.
+ */
 int llclose_receiver(int fd)
 {
     (void) signal(SIGALRM, handler);  // instala  rotina que atende interrupcao
@@ -564,6 +602,7 @@ int llclose_receiver(int fd)
     
     Message* msg = (Message*)malloc(sizeof(Message));
 	
+	//constroi trama do tipo DISC
     unsigned char* disc = build_frame_SU(DISC,FRAME_A1);
 
     if(data_link.mode == FULL_DEBUG)
@@ -572,6 +611,7 @@ int llclose_receiver(int fd)
         display(disc, FRAME_SIZE);
     }
     
+	//stuff
     int newsize = stuff(disc,FRAME_SIZE);
 
     if(data_link.mode == FULL_DEBUG)
@@ -587,23 +627,22 @@ int llclose_receiver(int fd)
             printf("Numero de tentativas excedida!\n");
             return -1;
         }
-        if(tries == 0)
+        if(tries == 0)	//na primeira tentativa deve receber uma trama do tipo DISC
         {
-            //Verificar e receber a trama DISC
             ret = receive(fd,msg);
             if(ret == ERROR)    
                 return -1;
-            else if(ret == OK)
+            else if(ret == OK)	//se recebe alguma coisa
             {
-                if(msg->type == DISC)
+                if(msg->type == DISC)	//e do tipo DISC com control adress 3
                 {
-                    if(msg->controlAdress == 3)
+                    if(msg->controlAdress == FRAME_A3)
                     {
-                        tries++;
+                        tries++;	//passa para a proxima 'tentativa'
                         if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
                             printf("Trama DISC recebida!\n");  
                     }
-                    else
+                    else	//cabecalho errado
                     {
                         if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
                             printf("Erro no cabecalho da trama DISC\n");
@@ -612,8 +651,9 @@ int llclose_receiver(int fd)
             }
         }
         
-        if(tries == 1 || retry) //só envia a trama se : for a primeira tentativa ou o alarme disparar
+        if(tries == 1 || retry) //só envia a trama se : for a segunda tentativa (ja recebeu um disc antes) ou o alarme disparar
         {
+			//escreve o DISC construido
             if((res = write(fd,disc,newsize)) == -1)
             {
                 perror("Erro na escrita write()");
@@ -626,21 +666,22 @@ int llclose_receiver(int fd)
             if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
                 printf("trama DISC enviada!\n");
             
+			//espera para receber a trama UA
             ret = receive(fd,msg);
             
-            if(ret == OK)
+            if(ret == OK)	//recebeu alguma coisa	
             {
-                if(msg->type == UA)
+                if(msg->type == UA)	//e do tipo UA com control adress 1
                 {
-                    if(msg->controlAdress == 1)
+                    if(msg->controlAdress == FRAME_A1)
                     {
                         free(disc);
-                        done = 1;
+                        done = 1;	//termina o ciclo
                         
                         if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
                             printf("trama UA recebida\n");
                     }
-                    else
+                    else	//erro no cabecalho
                     {
                         if(data_link.mode == SIMPLE_DEBUG || data_link.mode == FULL_DEBUG)
                             printf("Erro no cabecalho da trama UA\n");
@@ -652,5 +693,6 @@ int llclose_receiver(int fd)
     
     alarm(0);
     free(msg);
+	
     return 0;
 }

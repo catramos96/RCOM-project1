@@ -38,11 +38,10 @@ typedef enum {
 typedef struct
 {
     ControlFieldType type;
-    //char isCommand; //ainda nao sei se devo colocar
     unsigned char message[BUF_SIZE];        
     unsigned int message_size;    
     unsigned int isRetransmission;  
-    unsigned int controlAdress; //so pode ser 1 ou 3
+    unsigned char controlAdress; //so pode ser 1 ou 3
 } Message;
 
 /**
@@ -76,8 +75,6 @@ typedef struct
 }estatisticas;
 
 estatisticas statistics;
-
-
 
 //METODOS
 
