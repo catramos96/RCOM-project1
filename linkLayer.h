@@ -10,39 +10,11 @@
 #include "constants.h"
 
 /**
- * Estrutura de informação de uma trama
- */
-typedef struct
-{
-    char port[20];        /*Dispositivo /dev/ttySx, x = 0, 1*/
-    int baudRate;       /*Velocidade de transmissão*/
-    unsigned int sequenceNumber;    /*Número de sequência da trama: 0, 1*/
-    unsigned int timeout;  /*Valor do temporizador: 1 s*/
-    unsigned int numTransmissions;  /*Número de tentativas em caso de falha*/
-    unsigned int mode;
-}dataLink;
-
-/**
  * Estrutura de dados que guarda os tipos de Control Field
  */
 typedef enum {
     DISC, UA, SET, I, RR, REJ
 } ControlFieldType;
-
-/**
- * Estrutura de dados que guarda as informacoes recebidas da trama.
- * Guarda o tipo (Control Field);
- * Guarda o conteudo dos dados de uma mensagem e o respetivo tamanho (caso seja do tipo I);
- * Guarda o erro da analise (ou OK se não houver erros)
- */
-typedef struct
-{
-    ControlFieldType type;
-    unsigned char message[BUF_SIZE];        
-    unsigned int message_size;    
-    unsigned int isRetransmission;  
-    unsigned char controlAdress; //so pode ser 1 ou 3
-} Message;
 
 /**
  * Estrutura de informação que guarda os estados da leitura
@@ -57,13 +29,47 @@ typedef enum {
  * ERROR - qualquer erro de escrita ou leitura ou que aborte o programa
  * DATA ERROR - erro na interpretacao dos dados da trama I
  * OK - sem erros
+ * EMPTY - nao esta a receber nada (evita ciclos infinitos)
  */
 typedef enum {
     ERROR, DATAERROR, OK, EMPTY
 } ReturnType;
 
-static dataLink data_link;
+/**
+ * Estrutura de dados que guarda as informacoes recebidas da trama.
+ * Guarda o tipo (Control Field)
+ * Guarda o conteudo dos dados de uma mensagem e o respetivo tamanho (caso seja do tipo I);
+ * Guarda uma flag que indica se a mensagem enviada e ou nao uma retransmissao;
+ * Guarda o endereco de controlo (1 ou 3)
+ */
+typedef struct
+{
+    ControlFieldType type;
+    unsigned char message[BUF_SIZE];        
+    unsigned int message_size;    
+    unsigned int isRetransmission;  
+    unsigned char controlAdress;
+} Message;
 
+/**
+ * Estrutura de informação de uma trama. 
+ * Guarda a porta: Dispositivo /dev/ttySx, x = 0, 1;
+ * a velocidade de transmissao; o Número de sequência da trama: 0, 1;
+ * o Valor do temporizador; Número de tentativas em caso de falha; qual o modo de DEBUG.
+ */
+typedef struct
+{
+    char port[20];        			
+    int baudRate;       			
+    unsigned int sequenceNumber;    
+    unsigned int timeout;  			
+    unsigned int numTransmissions;  
+    unsigned int mode;			
+}dataLink;
+
+/**
+ * Estrutura que guarda as estatisticas.
+ */
 typedef struct
 {
     unsigned int tramasIenviadas;
@@ -74,9 +80,13 @@ typedef struct
     unsigned int REJrecebidos;
 }estatisticas;
 
+//inicializacao de structs
+
+static dataLink data_link;
+
 estatisticas statistics;
 
-//METODOS
+//metodos do linkLayer.c
 
 void init_linkLayer(unsigned char *port, unsigned int mode);
 
@@ -96,6 +106,8 @@ int llclose_receiver(int fd);
 
 int llclose_sender(int fd);
 
+//metodos do linkLayerAux.c
+
 unsigned char* build_frame_SU(ControlFieldType flag, unsigned char flag_A);
 
 unsigned char* build_frame_I(unsigned char* data, unsigned int data_length);
@@ -111,4 +123,3 @@ int stuff(unsigned char *frame, int frame_length);
 int destuff(unsigned char *frame, int frame_length);
 
 void display(unsigned char *frame, int n);
-
